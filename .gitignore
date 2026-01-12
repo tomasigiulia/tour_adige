@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+/.github/
+*.log
+*.tmp
+venv/
+__pycache__/

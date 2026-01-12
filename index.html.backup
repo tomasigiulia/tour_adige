@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tour Virtuale Drone | Marzipano</title>
+  <meta name="description" content="Tour virtuale a 360° creato con riprese aeree." />
+  <meta charset="utf-8">
+  <meta name="viewport" content="target-densitydpi=device-dpi, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui" />
+  <style> @-ms-viewport { width: device-width; } </style>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marzipano@0.10.2/build/marzipano.js"></script>
+</head>
+<body class="multiple-scenes view-control-buttons">
+
+<div id="pano"></div>
+
+<div id="sceneList">
+  <ul class="scenes">
+    <a href="javascript:void(0)" class="scene" data-id="panorama1">
+      <li class="text">Panorama 1</li>
+    </a>
+    <a href="javascript:void(0)" class="scene" data-id="panorama2">
+      <li class="text">Panorama 2</li>
+    </a>
+    <a href="javascript:void(0)" class="scene" data-id="panorama3">
+      <li class="text">Panorama 3</li>
+    </a>
+  </ul>
+</div>
+
+<div id="titleBar">
+  <h1 class="sceneName"></h1>
+</div>
+
+<a href="javascript:void(0)" id="autorotateToggle">
+  <img class="icon off" src="img/play.svg">
+  <img class="icon on" src="img/pause.svg">
+</a>
+
+<a href="javascript:void(0)" id="fullscreenToggle">
+  <img class="icon off" src="img/fullscreen.svg">
+  <img class="icon on" src="img/windowed.svg">
+</a>
+
+<a href="javascript:void(0)" id="sceneListToggle">
+  <img class="icon off" src="img/expand.svg">
+  <img class="icon on" src="img/collapse.svg">
+</a>
+
+<a href="javascript:void(0)" id="viewUp" class="viewControlButton viewControlButton-1">
+  <img class="icon" src="img/up.svg">
+</a>
+<a href="javascript:void(0)" id="viewDown" class="viewControlButton viewControlButton-2">
+  <img class="icon" src="img/down.svg">
+</a>
+<a href="javascript:void(0)" id="viewLeft" class="viewControlButton viewControlButton-3">
+  <img class="icon" src="img/left.svg">
+</a>
+<a href="javascript:void(0)" id="viewRight" class="viewControlButton viewControlButton-4">
+  <img class="icon" src="img/right.svg">
+</a>
+<a href="javascript:void(0)" id="viewIn" class="viewControlButton viewControlButton-5">
+  <img class="icon" src="img/plus.svg">
+</a>
+<a href="javascript:void(0)" id="viewOut" class="viewControlButton viewControlButton-6">
+  <img class="icon" src="img/minus.svg">
+</a>
+
+<script>
+(function() {
+  'use strict';
+
+  // Configurazione delle scene
+  var APP_DATA = {
+    "scenes": [
+      {
+        "id": "panorama1",
+        "name": "Panorama 1",
+        "levels": [{
+          "tileSize": 256,
+          "size": 256,
+          "fallbackOnly": true
+        }, {
+          "tileSize": 512,
+          "size": 512
+        }, {
+          "tileSize": 512,
+          "size": 1024
+        }, {
+          "tileSize": 512,
+          "size": 2048
+        }],
+        "faceSize": 2048,
+        "initialViewParameters": {
+          "yaw": 0,
+          "pitch": 0,
+          "fov": 1.5707963267948966
+        },
+        "linkHotspots": [
+          {
+            "yaw": 0,
+            "pitch": 0,
+            "rotation": 0,
+            "target": "panorama2"
+          }
+        ],
+        "infoHotspots": []
+      },
+      {
+        "id": "panorama2",
+        "name": "Panorama 2",
+        "levels": [{
+          "tileSize": 256,
+          "size": 256,
+          "fallbackOnly": true
+        }, {
+          "tileSize": 512,
+          "size": 512
+        }, {
+          "tileSize": 512,
+          "size": 1024
+        }, {
+          "tileSize": 512,
+          "size": 2048
+        }],
+        "faceSize": 2048,
+        "initialViewParameters": {
+          "yaw": 0,
+          "pitch": 0,
+          "fov": 1.5707963267948966
+        },
+        "linkHotspots": [
+          {
+            "yaw": 3.14159,
+            "pitch": 0,
+            "rotation": 0,
+            "target": "panorama1"
+          },
+          {
+            "yaw": 1,
+            "pitch": 0,
+            "rotation": 0,
+            "target": "panorama3"
+          }
+        ],
+        "infoHotspots": []
+      },
+      {
+        "id": "panorama3",
+        "name": "Panorama 3",
+        "levels": [{
+          "tileSize": 256,
+          "size": 256,
+          "fallbackOnly": true
+        }, {
+          "tileSize": 512,
+          "size": 512
+        }, {
+          "tileSize": 512,
+          "size": 1024
+        }, {
+          "tileSize": 512,
+          "size": 2048
+        }],
+        "faceSize": 2048,
+        "initialViewParameters": {
+          "yaw": 0,
+          "pitch": 0,
+          "fov": 1.5707963267948966
+        },
+        "linkHotspots": [
+          {
+            "yaw": -1,
+            "pitch": 0,
+            "rotation": 0,
+            "target": "panorama1"
+          }
+        ],
+        "infoHotspots": []
+      }
+    ],
+    "name": "Tour Virtuale Drone",
+    "settings": {
+      "mouseViewMode": "drag",
+      "autorotateEnabled": false,
+      "fullscreenButton": false,
+      "viewControlButtons": true
+    }
+  };
+
+  // Grab elements from DOM
+  var panoElement = document.querySelector('#pano');
+  var sceneNameElement = document.querySelector('#titleBar .sceneName');
+  var sceneListElement = document.querySelector('#sceneList');
+  var sceneElements = document.querySelectorAll('#sceneList .scene');
+  var sceneListToggleElement = document.querySelector('#sceneListToggle');
+  var autorotateToggleElement = document.querySelector('#autorotateToggle');
+  var fullscreenToggleElement = document.querySelector('#fullscreenToggle');
+
+  // Viewer options
+  var viewerOpts = {
+    controls: {
+      mouseViewMode: APP_DATA.settings.mouseViewMode
+    }
+  };
+
+  // Initialize viewer
+  var viewer = new Marzipano.Viewer(panoElement, viewerOpts);
+
+  // Create scenes
+  var scenes = APP_DATA.scenes.map(function(data) {
+    var urlPrefix = "panorami/" + data.id;
+    var source = Marzipano.ImageUrlSource.fromString(
+      urlPrefix + ".jpg",
+      { cubeMapPreviewUrl: urlPrefix + ".jpg" }
+    );
+    
+    var geometry = new Marzipano.EquirectGeometry(data.levels);
+
+    var limiter = Marzipano.RectilinearView.limit.traditional(
+      data.faceSize,
+      100 * Math.PI / 180,
+      120 * Math.PI / 180
+    );
+    var view = new Marzipano.RectilinearView(
+      data.initialViewParameters,
+      limiter
+    );
+
+    var scene = viewer.createScene({
+      source: source,
+      geometry: geometry,
+      view: view,
+      pinFirstLevel: true
+    });
+
+    // Create link hotspots
+    data.linkHotspots.forEach(function(hotspot) {
+      var element = createLinkHotspotElement(hotspot);
+      scene.hotspotContainer().createHotspot(element, {
+        yaw: hotspot.yaw,
+        pitch: hotspot.pitch
+      });
+    });
+
+    return {
+      data: data,
+      scene: scene,
+      view: view
+    };
+  });
+
+  // Create link hotspot element
+  function createLinkHotspotElement(hotspot) {
+    var wrapper = document.createElement('div');
+    wrapper.classList.add('hotspot');
+    wrapper.classList.add('link-hotspot');
+
+    var icon = document.createElement('div');
+    wrapper.appendChild(icon);
+
+    wrapper.addEventListener('click', function() {
+      switchScene(findSceneById(hotspot.target));
+    });
+
+    return wrapper;
+  }
+
+  // Find scene by ID
+  function findSceneById(id) {
+    for (var i = 0; i < scenes.length; i++) {
+      if (scenes[i].data.id === id) {
+        return scenes[i];
+      }
+    }
+    return null;
+  }
+
+  // Scene switching
+  function switchScene(scene) {
+    scene.view.setParameters(scene.data.initialViewParameters);
+    scene.scene.switchTo();
+    updateSceneName(scene);
+    updateSceneList(scene);
+  }
+
+  function updateSceneName(scene) {
+    sceneNameElement.innerHTML = scene.data.name;
+  }
+
+  function updateSceneList(scene) {
+    for (var i = 0; i < sceneElements.length; i++) {
+      var el = sceneElements[i];
+      if (el.getAttribute('data-id') === scene.data.id) {
+        el.classList.add('current');
+      } else {
+        el.classList.remove('current');
+      }
+    }
+  }
+
+  // Scene list toggle
+  sceneListToggleElement.addEventListener('click', function() {
+    sceneListElement.classList.toggle('enabled');
+    sceneListToggleElement.classList.toggle('enabled');
+  });
+
+  // Scene selection
+  sceneElements.forEach(function(el) {
+    el.addEventListener('click', function() {
+      var sceneId = el.getAttribute('data-id');
+      switchScene(findSceneById(sceneId));
+    });
+  });
+
+  // Autorotate
+  var autorotate = Marzipano.autorotate({
+    yawSpeed: 0.03,
+    targetPitch: 0,
+    targetFov: Math.PI / 2
+  });
+
+  autorotateToggleElement.addEventListener('click', function() {
+    if (autorotateToggleElement.classList.contains('enabled')) {
+      autorotateToggleElement.classList.remove('enabled');
+      viewer.stopMovement();
+      viewer.setIdleMovement(Infinity);
+    } else {
+      autorotateToggleElement.classList.add('enabled');
+      viewer.setIdleMovement(3000, autorotate);
+      viewer.startMovement(autorotate);
+    }
+  });
+
+  // Fullscreen
+  fullscreenToggleElement.addEventListener('click', function() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen();
+    }
+  });
+
+  document.addEventListener('fullscreenchange', function() {
+    if (document.fullscreenElement) {
+      fullscreenToggleElement.classList.add('enabled');
+    } else {
+      fullscreenToggleElement.classList.remove('enabled');
+    }
+  });
+
+  // View controls
+  var velocity = 0.7;
+  var friction = 3;
+
+  var controls = viewer.controls();
+  controls.registerMethod('upElement', new Marzipano.ElementPressControlMethod(
+    document.querySelector('#viewUp'), 'y', -velocity, friction
+  ), true);
+  controls.registerMethod('downElement', new Marzipano.ElementPressControlMethod(
+    document.querySelector('#viewDown'), 'y', velocity, friction
+  ), true);
+  controls.registerMethod('leftElement', new Marzipano.ElementPressControlMethod(
+    document.querySelector('#viewLeft'), 'x', -velocity, friction
+  ), true);
+  controls.registerMethod('rightElement', new Marzipano.ElementPressControlMethod(
+    document.querySelector('#viewRight'), 'x', velocity, friction
+  ), true);
+  controls.registerMethod('inElement', new Marzipano.ElementPressControlMethod(
+    document.querySelector('#viewIn'), 'zoom', -velocity, friction
+  ), true);
+  controls.registerMethod('outElement', new Marzipano.ElementPressControlMethod(
+    document.querySelector('#viewOut'), 'zoom', velocity, friction
+  ), true);
+
+  // Display first scene
+  switchScene(scenes[0]);
+
+})();
+</script>
+
+</body>
+</html>
+    
+    // Creare il viewer
+    var viewer = new Marzipano.Viewer(document.getElementById('pano'));
+    console.log("Viewer creato:", viewer);
+
+    // Lista dei panorami (usa percorsi relativi)
+    var panoramas = {
+      "p1": "panorami/panorama1.jpg",
+      "p2": "panorami/panorama2.jpg",
+      "p3": "panorami/panorama3.jpg"
+    };
+    console.log("Panorami configurati:", panoramas);
+
+    var scenes = {};
+
+    // Creare le scene
+    for (var key in panoramas) {
+      console.log("Creando scena per:", key, panoramas[key]);
+      var source = Marzipano.ImageUrlSource.fromString(panoramas[key]);
+      
+      // Usa dimensioni più flessibili per equirettangolari
+      var geometry = new Marzipano.EquirectGeometry([{ width: 8192 }]);
+      
+      // Configurazione della vista con limiti
+      var limiter = Marzipano.RectilinearView.limit.traditional(4096, 100*Math.PI/180, 120*Math.PI/180);
+      var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: Math.PI/2 }, limiter);
+      
+      scenes[key] = viewer.createScene({ source: source, geometry: geometry, view: view });
+      console.log("Scena creata:", key);
+    }
+    console.log("Tutte le scene create:", Object.keys(scenes));
+
+    // Funzione per passare da una scena all’altra
+    function goTo(sceneKey) {
+      scenes[sceneKey].switchTo({ transitionDuration: 1000 });
+    }
+
+    // Aggiungere hotspot tra panorami
+    function addHotspot(from, to, yaw, pitch, title) {
+      var hs = document.createElement('div');
+      hs.className = 'hotspot';
+      hs.title = title;
+      hs.onclick = function() { goTo(to); };
+      scenes[from].hotspotContainer().createHotspot(hs, { yaw: yaw, pitch: pitch });
+    }
+
+    // Esempio: collegamenti
+    addHotspot("p1", "p2", 0, 0, "Vai a P2");
+    addHotspot("p2", "p1", Math.PI, 0, "Torna a P1");
+    addHotspot("p2", "p3", 1, 0, "Vai a P3");
+    addHotspot("p3", "p1", -1, 0, "Torna a P1");
+
+    // Avvio scena iniziale
+    console.log("Avvio scena iniziale p1");
+    scenes["p1"].switchTo();
+    console.log("Tour virtuale pronto!");
+  </script>
+</body>
+</html>

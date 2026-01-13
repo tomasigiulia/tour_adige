@@ -46,7 +46,7 @@ var data = {
           "pitch": 0.4340,
           "title": "Sicyos angulatus",
           "text": " pianta annuale erbacea, rampicante. Possiede dei fusti lianosi mediamente lunghi a maturità tra i 2 e i 5 metri, ma che quando la pianta si trova in condizioni ambientali ottimali possono anche diventare più lunghi. Grazie a cirri ramosi questi possono aggrapparsi ad altre piante o sostegni di diverso tipo. Le foglie sono lobate ed ispide, di aspetto cuoriforme, e possono arrivare ai 7 cm di lunghezza. Si tratta di una pianta monoica, ovvero con fiori maschili e femminili distinti ma compresenti sullo stesso individuo. I fiori maschili sono riuniti in racemi, quelli femminili in capolini con pochi fiori; la loro corolla è giallastra ma poco significativa",
-          "image": "hotspots/Sicyos_angulatus.jpg"
+          "image": "./hotspots/Sicyos_angulatus.jpg"
         }
       ]
     },

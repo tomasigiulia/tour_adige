@@ -67,12 +67,12 @@ body, html { margin:0; padding:0; height:100%; background:#000; overflow:hidden;
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="marzipano.js"></script>
-<script src="data.js"></script>
+<script src="./marzipano.js"></script>
+<script src="./data.js"></script>
 
 <script>
 const panoramaFiles = ['panorama1.jpg','panorama2.jpg','panorama3.jpg'];
-const folder = 'panorami/';
+const folder = './panorami/';
 
 let viewer = new Marzipano.Viewer(document.getElementById('pano'));
 let scenes=[], markers=[], map, currentView, currentSceneIndex=0;
@@ -142,7 +142,7 @@ function switchScene(index){
 function addHotspots(index){
     if(index!==0) return;
     if(scenes[index].hotspotsCreated) return;
-    let hsData={yaw:0.5,pitch:0.1,title:"Sycius",text:"Testo descrizione Sycius",image:"panorami/sycius.jpg"};
+    let hsData={yaw:0.5,pitch:0.1,title:"Sycius",text:"Testo descrizione Sycius",image:"./panorami/sycius.jpg"};
     let el=document.createElement('div'); el.className='hotspot-info'; el.innerHTML='<span class="hotspot-plus">+</span>';
     el.onclick=()=>showInfoHotspot(hsData.title,hsData.text,hsData.image);
     scenes[index].scene.hotspotContainer().createHotspot(el,{yaw:hsData.yaw,pitch:hsData.pitch});

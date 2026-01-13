@@ -32,14 +32,25 @@
             background: rgba(52, 152, 219, 0.5);
             border-color: rgba(52, 152, 219, 0.8);
         }
-        #lang-toggle.lang-en {
-            background: rgba(231, 76, 60, 0.6) !important;
-            border-color: rgba(231, 76, 60, 0.8) !important;
-            color: #fff !important;
+        #lang-toggle .lang-it,
+        #lang-toggle .lang-en {
+            transition: all 0.2s ease;
+            padding: 2px 4px;
+            border-radius: 4px;
         }
-        #lang-toggle.lang-en:hover {
-            background: rgba(231, 76, 60, 0.8) !important;
-            border-color: rgba(231, 76, 60, 0.9) !important;
+        #lang-toggle .lang-it.active {
+            font-weight: bold;
+            color: #fff;
+            background: rgba(52, 152, 219, 0.7);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 12px rgba(52, 152, 219, 0.8);
+        }
+        #lang-toggle .lang-en.active {
+            font-weight: bold;
+            color: #fff;
+            background: rgba(52, 152, 219, 0.7);
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 12px rgba(52, 152, 219, 0.8);
         }
 
         /* --- MAP BOX --- */
@@ -353,7 +364,7 @@
 <div id="pano"></div>
 <div id="title-wrapper" style="position: absolute; top: 20px; left: 20px; z-index: 1001; display: flex; gap: 12px; align-items: center;">
   <div id="title" style="background: var(--bg-glass); color: white; padding: 12px 20px; border-radius: 10px; backdrop-filter: blur(10px); font-weight: bold;">VIRTUAL TOUR 360°</div>
-  <button id="lang-toggle" style="background: var(--bg-glass); color: white; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); font-weight: bold; font-size: 12px; cursor: pointer; transition: all 0.2s ease; z-index: 1001;" onclick="toggleLanguage()" title="Cambia lingua / Change language">IT | EN</button>
+  <button id="lang-toggle" style="background: var(--bg-glass); color: white; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); font-size: 12px; cursor: pointer; transition: all 0.2s ease; z-index: 1001;" onclick="toggleLanguage()" title="Cambia lingua / Change language"><span class="lang-it active">IT</span> | <span class="lang-en">EN</span></button>
 </div>
 
 <div id="map-box">
@@ -407,7 +418,7 @@
 // === SISTEMA MULTI-LINGUA ===
 var translations = {
   it: {
-    title: "VIRTUAL TOUR LUNGO IL FIUME ADIGE°",
+    title: "TOUR VIRTUALE LUNGO IL FIUME ADIGE°",
     rotationToggle: "Blocca/Sblocca rotazione",
     fullscreen: "Schermo intero",
     prevView: "Vista precedente",
@@ -426,7 +437,7 @@ var translations = {
     loading: "Caricamento tour in corso..."
   },
   en: {
-    title: "VIRTUAL TOUR 360°",
+    title: "VIRTUAL TOUR ALONG THE ADIGE RIVER",
     rotationToggle: "Lock/Unlock rotation",
     fullscreen: "Fullscreen",
     prevView: "Previous view",
@@ -492,16 +503,24 @@ function setLanguage(lang) {
     barToggle.title = barToggle.classList.contains('collapsed') ? getTranslation('showBar') : getTranslation('hideBar');
   }
   
-  // Effetto visivo sul bottone lingua: cambia colore per EN
+  // Aggiorna titolo mappa
+  var mapTitleEl = document.getElementById('map-title-text');
+  if (mapTitleEl) {
+    mapTitleEl.innerText = getTranslation('mapTitle');
+  }
+  
+  // Effetto visivo sul bottone lingua: grassetto sulla lingua attiva
   var langBtn = document.getElementById('lang-toggle');
   if (langBtn) {
-    if (lang === 'en') {
-      langBtn.classList.add('lang-en');
-    } else {
-      langBtn.classList.remove('lang-en');
+    var langItSpan = langBtn.querySelector('.lang-it');
+    var langEnSpan = langBtn.querySelector('.lang-en');
+    if (lang === 'it') {
+      if (langItSpan) langItSpan.classList.add('active');
+      if (langEnSpan) langEnSpan.classList.remove('active');
+    } else if (lang === 'en') {
+      if (langItSpan) langItSpan.classList.remove('active');
+      if (langEnSpan) langEnSpan.classList.add('active');
     }
-    langBtn.classList.add('active');
-    setTimeout(() => langBtn.classList.remove('active'), 300);
   }
   
   console.log('✓ Aggiornamenti linguistici completati');

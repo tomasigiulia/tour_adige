@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <title>Tour 360 Pro - Coordinate Mode</title>
+    <title>Tour 360 Pro</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -20,10 +20,26 @@
 
         /* --- TITOLO --- */
         #title { 
-            position: absolute; top: 20px; left: 20px; z-index: 1001;
             background: var(--bg-glass); color: white; padding: 12px 20px;
             border-radius: 10px; backdrop-filter: blur(10px); font-weight: bold;
-            /* rimosso bordo sinistro azzurro richiesto dall'utente */
+        }
+        #lang-toggle:hover {
+            background: rgba(52, 152, 219, 0.3);
+            border-color: rgba(52, 152, 219, 0.5);
+            transform: translateY(-1px);
+        }
+        #lang-toggle.active {
+            background: rgba(52, 152, 219, 0.5);
+            border-color: rgba(52, 152, 219, 0.8);
+        }
+        #lang-toggle.lang-en {
+            background: rgba(231, 76, 60, 0.6) !important;
+            border-color: rgba(231, 76, 60, 0.8) !important;
+            color: #fff !important;
+        }
+        #lang-toggle.lang-en:hover {
+            background: rgba(231, 76, 60, 0.8) !important;
+            border-color: rgba(231, 76, 60, 0.9) !important;
         }
 
         /* --- MAP BOX --- */
@@ -335,12 +351,15 @@
 <body>
 
 <div id="pano"></div>
-<div id="title">VIRTUAL TOUR 360°</div>
+<div id="title-wrapper" style="position: absolute; top: 20px; left: 20px; z-index: 1001; display: flex; gap: 12px; align-items: center;">
+  <div id="title" style="background: var(--bg-glass); color: white; padding: 12px 20px; border-radius: 10px; backdrop-filter: blur(10px); font-weight: bold;">VIRTUAL TOUR 360°</div>
+  <button id="lang-toggle" style="background: var(--bg-glass); color: white; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); font-weight: bold; font-size: 12px; cursor: pointer; transition: all 0.2s ease; z-index: 1001;" onclick="toggleLanguage()" title="Cambia lingua / Change language">IT | EN</button>
+</div>
 
 <div id="map-box">
     <div class="map-header">
         <div style="display:flex;align-items:center;gap:6px">
-            <div class="map-title">Mappa</div>
+            <div class="map-title" id="map-title-text">Mappa</div>
             <div class="map-layer-name" id="map-layer-name">OSM</div>
         </div>
         <!-- header controls left intentionally minimal; layer button moved into map controls -->
@@ -348,8 +367,8 @@
     <div id="mapContainer"></div>
     <div class="map-attribution" id="map-attribution"></div>
     <div class="map-controls">
-        <button class="map-btn" onclick="zoomIn()" title="Zoom In">+</button>
-        <button class="map-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+        <button class="map-btn" onclick="zoomIn()" id="zoom-in-btn" title="Zoom In">+</button>
+        <button class="map-btn" onclick="zoomOut()" id="zoom-out-btn" title="Zoom Out">−</button>
     </div>
     <!-- Pulsanti a destra (es. cambio layer) - stessa tipologia dei map-btn ma posizionati a destra -->
     <div class="map-controls-right">
@@ -361,7 +380,7 @@
             </svg>
         </button>
     </div>
-    <button id="map-hover-toggle" class="hover-toggle" onclick="toggleMap()" title="Espandi/Comprimi mappa">⤢</button>
+    <button id="map-hover-toggle" class="hover-toggle" onclick="toggleMap()" title="Espandi/Comprimi mappa" aria-label="Espandi/Comprimi mappa">⤢</button>
 </div>
 
 <div id="controls-wrapper">
@@ -382,8 +401,128 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
 <script src="./marzipano.js"></script>
 <script src="./data.js"></script>
+<script src="./data-translations.js"></script>
 
 <script>
+// === SISTEMA MULTI-LINGUA ===
+var translations = {
+  it: {
+    title: "VIRTUAL TOUR LUNGO IL FIUME ADIGE°",
+    rotationToggle: "Blocca/Sblocca rotazione",
+    fullscreen: "Schermo intero",
+    prevView: "Vista precedente",
+    nextView: "Vista successiva",
+    showBar: "Mostra barra",
+    hideBar: "Nascondi barra",
+    expandGallery: "Espandi/Contrai galleria viste",
+    layerOSM: "OSM",
+    layerSatellite: "Satellite",
+    layerCartoDB: "CartoDB",
+    mapTitle: "Mappa",
+    zoomIn: "Zoom In",
+    zoomOut: "Zoom Out",
+    changeLayer: "Cambia strato",
+    closeModal: "Chiudi",
+    loading: "Caricamento tour in corso..."
+  },
+  en: {
+    title: "VIRTUAL TOUR 360°",
+    rotationToggle: "Lock/Unlock rotation",
+    fullscreen: "Fullscreen",
+    prevView: "Previous view",
+    nextView: "Next view",
+    showBar: "Show bar",
+    hideBar: "Hide bar",
+    expandGallery: "Expand/Collapse gallery views",
+    layerOSM: "OSM",
+    layerSatellite: "Satellite",
+    layerCartoDB: "CartoDB",
+    mapTitle: "Map",
+    zoomIn: "Zoom In",
+    zoomOut: "Zoom Out",
+    changeLayer: "Change layer",
+    closeModal: "Close",
+    loading: "Loading tour..."
+  }
+};
+var currentLanguage = localStorage.getItem('tourLanguage') || 'it';
+
+function getTranslation(key) {
+  return (translations[currentLanguage] && translations[currentLanguage][key]) || translations['it'][key] || key;
+}
+
+function setLanguage(lang) {
+  if (!translations[lang]) return;
+  currentLanguage = lang;
+  localStorage.setItem('tourLanguage', lang);
+  console.log('🌐 Lingua cambiata a:', lang);
+  
+  // Aggiorna titolo
+  var titleEl = document.getElementById('title');
+  if (titleEl) titleEl.innerText = getTranslation('title');
+  
+  // Aggiorna bottoni
+  var rotBtn = document.getElementById('rotation-toggle');
+  if (rotBtn) {
+    rotBtn.title = getTranslation('rotationToggle');
+    rotBtn.setAttribute('aria-label', getTranslation('rotationToggle'));
+  }
+  
+  var fullscreenBtn = document.getElementById('fullscreen-toggle');
+  if (fullscreenBtn) {
+    fullscreenBtn.title = getTranslation('fullscreen');
+    fullscreenBtn.setAttribute('aria-label', getTranslation('fullscreen'));
+  }
+  
+  // Aggiorna frecce navigate
+  var buttons = document.querySelectorAll('button[onclick*="navigateScene"]');
+  buttons.forEach(function(btn) {
+    if (btn.onclick.toString().includes('navigateScene(-1)')) {
+      btn.title = getTranslation('prevView');
+      btn.setAttribute('aria-label', getTranslation('prevView'));
+    } else if (btn.onclick.toString().includes('navigateScene(1)')) {
+      btn.title = getTranslation('nextView');
+      btn.setAttribute('aria-label', getTranslation('nextView'));
+    }
+  });
+  
+  // Aggiorna bottone barra
+  var barToggle = document.getElementById('bar-toggle');
+  if (barToggle) {
+    barToggle.title = barToggle.classList.contains('collapsed') ? getTranslation('showBar') : getTranslation('hideBar');
+  }
+  
+  // Effetto visivo sul bottone lingua: cambia colore per EN
+  var langBtn = document.getElementById('lang-toggle');
+  if (langBtn) {
+    if (lang === 'en') {
+      langBtn.classList.add('lang-en');
+    } else {
+      langBtn.classList.remove('lang-en');
+    }
+    langBtn.classList.add('active');
+    setTimeout(() => langBtn.classList.remove('active'), 300);
+  }
+  
+  console.log('✓ Aggiornamenti linguistici completati');
+}
+
+function toggleLanguage() {
+  var newLang = currentLanguage === 'it' ? 'en' : 'it';
+  setLanguage(newLang);
+}
+
+function updateLayerNames() {
+  if (layers && layers.length >= 3) {
+    layers[0].name = getTranslation('layerOSM');
+    layers[1].name = getTranslation('layerSatellite');
+    layers[2].name = getTranslation('layerCartoDB');
+    var nameEl = document.getElementById('map-layer-name');
+    if (nameEl) nameEl.innerText = layers[currentLayerIndex].name;
+    buildLayerMenu();
+  }
+}
+
 // TILES per rendering (multi-risoluzione)
 const panoramaFiles = ['panorama1.tiles', 'panorama2.tiles', 'panorama3.tiles'];
 // JPG originali per lettura GPS EXIF
@@ -445,7 +584,7 @@ function getGpsData(url) {
 
 async function init() {
     // Mostra loader
-    showLoader('Caricamento tour in corso...');
+    showLoader(getTranslation('loading'));
     
     // Leggi i dati GPS in parallelo (più veloce rispetto al caricamento sequenziale)
     // Usa immagini più piccole per lettura GPS (più veloce)
@@ -517,9 +656,9 @@ async function init() {
 
     // layers array: ogni elemento ha {layer, name, icon}
     layers = [
-        { layer: baseLayer, name: 'OSM', icon: '🗺️', attribution: '© OpenStreetMap contributors' },
-        { layer: satelliteLayer, name: 'Satellite', icon: '🛰️', attribution: 'Esri' },
-        { layer: cartoLayer, name: 'Carto Light', icon: '🗺️', attribution: 'CartoDB' }
+        { layer: baseLayer, name: getTranslation('layerOSM'), icon: '🗺️', attribution: '© OpenStreetMap contributors' },
+        { layer: satelliteLayer, name: getTranslation('layerSatellite'), icon: '🛰️', attribution: 'Esri' },
+        { layer: cartoLayer, name: getTranslation('layerCartoDB'), icon: '🗺️', attribution: 'CartoDB' }
     ];
 
     // usa la funzione setLayer per aggiungere il layer di default
@@ -639,6 +778,9 @@ async function init() {
     // Autorotazione attiva di default
     startAutoRotation();
     updateRotationButton();
+    
+    // Applica la lingua salvata o predefinita
+    setLanguage(currentLanguage);
     
     // Nascondi loader rapidamente dopo che la prima scena è pronta
     setTimeout(() => hideLoader(), 400);
@@ -1019,6 +1161,11 @@ init();
 // --- MODALE INFORMAZIONI HOTSPOT (custom, evita alert nativo con origine) ---
 // showInfoHotspot(title, text, imageUrl)
 function showInfoHotspot(title, text, imageUrl) {
+    // Cerca traduzione del hotspot
+    var translation = getHotspotTranslation(title);
+    var displayTitle = translation ? translation.title : (title || '');
+    var displayText = translation ? translation.text : (text || '');
+    
     var existing = document.getElementById('info-modal');
     if (!existing) {
         var modal = document.createElement('div');
@@ -1063,8 +1210,8 @@ function showInfoHotspot(title, text, imageUrl) {
         modal.querySelector('#info-backdrop')?.addEventListener('click', hideInfoHotspot);
         document.addEventListener('keydown', function onEsc(e){ if (e.key === 'Escape') hideInfoHotspot(); });
     }
-    document.getElementById('info-title').innerText = title || '';
-    document.getElementById('info-body').innerText = text || '';
+    document.getElementById('info-title').innerText = displayTitle;
+    document.getElementById('info-body').innerText = displayText;
     // image handling - applica il baseURL se il percorso è relativo
     var imgWrap = document.getElementById('info-image');
     var imgEl = document.getElementById('info-image-img');
@@ -1099,10 +1246,10 @@ function toggleBar() {
     // Cambia il simbolo: ▲ quando aperto, ▼ quando chiuso
     if (barToggle.classList.contains('collapsed')) {
         barToggle.textContent = '▼';
-        barToggle.title = 'Mostra barra';
+        barToggle.title = getTranslation('showBar');
     } else {
         barToggle.textContent = '▲';
-        barToggle.title = 'Nascondi barra';
+        barToggle.title = getTranslation('hideBar');
     }
 }
 </script>
@@ -1124,11 +1271,11 @@ function toggleBar() {
     <!-- BOTTOM ROW (88px): Thumbnails -->
     <div id="control-bar-bottom">
         <div class="control-group">
-            <button class="control-btn" aria-label="Vista precedente" title="Vista precedente" onclick="navigateScene(-1)">❮</button>
+            <button class="control-btn" id="prev-scene-btn" aria-label="Vista precedente" title="Vista precedente" onclick="navigateScene(-1)">❮</button>
         </div>
         <div id="thumb-track"></div>
         <div class="control-group">
-            <button class="control-btn" aria-label="Vista successiva" title="Vista successiva" onclick="navigateScene(1)">❯</button>
+            <button class="control-btn" id="next-scene-btn" aria-label="Vista successiva" title="Vista successiva" onclick="navigateScene(1)">❯</button>
         </div>
     </div>
 </div>

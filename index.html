@@ -1,51 +1,206 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<title>Tour 360 Pro - Coordinate Mode</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-<style>
-/* Stili base identici a quelli vecchi + hotspot Sycius */
-body, html { margin:0; padding:0; height:100%; background:#000; overflow:hidden; }
-#pano { position:absolute; width:100%; height:100%; cursor:crosshair; touch-action:none; }
-#title { position:absolute; top:20px; left:20px; background:rgba(44,62,80,0.9); color:#fff; padding:12px 20px; border-radius:10px; font-weight:bold; backdrop-filter:blur(10px); z-index:1001; }
+    <title>Tour 360 Pro - Coordinate Mode</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --danger: #e74c3c;
+            --bg-glass: rgba(44, 62, 80, 0.9);
+        }
 
-/* MAPPA */
-#map-box { position:absolute; top:20px; right:20px; width:320px; height:260px; z-index:1001; border-radius:14px; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.06); background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); }
-#mapContainer { width:100%; height:100%; }
-.map-controls { position:absolute; top:10px; left:10px; display:flex; flex-direction:column; gap:8px; z-index:1002; }
-.map-btn { width:38px; height:38px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.45); color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-.map-btn:hover { background:rgba(255,255,255,0.06); transform:translateY(-2px); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #000; overflow: hidden; }
+        /* evita gesti di scrolling nativi sul pannello pano e aiuta le performance touch */
+        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
 
-/* HOTSPOT */
-.hotspot-info { width:34px; height:34px; border-radius:50%; background:linear-gradient(180deg,#0b3d91,#082b5f); border:2px solid rgba(255,255,255,0.12); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:18px; position:absolute; margin-left:-17px; margin-top:-17px; cursor:pointer; z-index:10010; box-shadow:0 6px 18px rgba(11,61,145,0.24); transition: transform 0.12s ease; }
-.hotspot-info:hover { transform:scale(1.08); box-shadow:0 10px 22px rgba(11,61,145,0.28); }
+        /* --- TITOLO --- */
+        #title { 
+            position: absolute; top: 20px; left: 20px; z-index: 1001;
+            background: var(--bg-glass); color: white; padding: 12px 20px;
+            border-radius: 10px; backdrop-filter: blur(10px); font-weight: bold;
+            /* rimosso bordo sinistro azzurro richiesto dall'utente */
+        }
 
-/* GALLERY */
-#controls-wrapper { position:absolute; bottom:0; width:100%; z-index:1001; background:rgba(0,0,0,0.7); backdrop-filter:blur(10px); }
-#controls { display:flex; gap:10px; padding:15px; justify-content:center; overflow-x:auto; }
-.scene-btn { width:80px; border-radius:6px; border:2px solid transparent; cursor:pointer; background:#222; flex-shrink:0; }
-.scene-btn.active { border-color:#3498db; }
-.scene-btn img { width:100%; height:40px; object-fit:cover; display:block; }
-.btn-label { font-size:9px; color:white; padding:3px; text-align:center; }
+        /* --- MAP BOX --- */
+        #map-box {
+            position: absolute; top: 20px; right: 20px;
+            width: 320px; height: 260px; z-index: 1001;
+            border-radius: 14px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+            transition: transform 0.22s ease, opacity 0.22s ease; border: 1px solid rgba(255,255,255,0.06);
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+        }
+        #map-box.collapsed { width: 50px; height: 50px; border-radius: 50%; transform: scale(0.95); }
+        /* Quando la mappa è contratta mostriamo solo il bottone di espandi/contrai */
+        #map-box.collapsed .map-header,
+        #map-box.collapsed .map-attribution,
+        #map-box.collapsed .map-controls-right,
+        #map-box.collapsed .map-controls,
+        #map-box.collapsed #mapContainer {
+            display: none !important;
+        }
+        #map-box.collapsed {
+            width: 54px; height: 54px; border-radius: 50%; overflow: visible;
+        }
+        /* Rendiamo il bottone di expand pienamente visibile e centrato nel box */
+        #map-box.collapsed #map-hover-toggle {
+            display: flex; width: 46px; height: 46px; border-radius: 50%;
+            right: 4px; bottom: 4px; align-items: center; justify-content: center;
+            background: linear-gradient(180deg, #2a2a2a, #0f0f0f); border: 1px solid rgba(255,255,255,0.04);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+        }
+        #mapContainer { width: 100%; height: calc(100% - 36px); }
+        #map-toggle {
+            position: absolute; bottom: 8px; right: 8px; z-index: 1002;
+            width: 34px; height: 34px; border-radius: 8px; border: none;
+            background: rgba(0,0,0,0.4); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        /* hover toggle (mostra solo al passaggio del mouse) */
+        .hover-toggle {
+            position: absolute; bottom: 8px; right: 8px; z-index: 1004;
+            width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(0,0,0,0.45); color: #fff; display: flex; align-items: center; justify-content: center;
+            opacity: 1; pointer-events: auto; transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        #map-box:hover .hover-toggle { transform: translateY(0); }
+        #controls-wrapper:hover .hover-toggle { transform: translateY(0); }
+        .map-attribution {
+            position: absolute; bottom: 8px; left: 10px; z-index: 1002; color: #bbb;
+            font-size: 11px; background: rgba(0,0,0,0.25); padding: 4px 8px; border-radius: 6px;
+            backdrop-filter: blur(4px);
+        }
+        .map-header {
+            height: 36px; display: flex; align-items: center; justify-content: space-between;
+            padding: 6px 10px; gap: 8px; z-index: 1003; backdrop-filter: blur(6px);
+        }
+        .map-title { color: #ddd; font-size: 13px; font-weight: 600; display:flex; align-items:center; gap:8px }
+        .map-layer-name { color: #bbb; font-size: 12px; font-weight: 500; opacity: 0.9; margin-left: 4px; }
+        /* layer menu */
+        .layer-menu {
+            position: absolute; top: 44px; right: 10px; z-index: 1005;
+            background: rgba(10,10,10,0.95); color: #fff; border-radius: 8px; padding: 6px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6); min-width: 140px; display: none;
+        }
+        /* Nascondi il menu layer: ora usiamo modalità 'cycle' via pulsante */
+        .layer-menu { display: none !important; }
+        .layer-menu.show { display: block; animation: fadeIn 160ms ease; }
+        .layer-item { display: flex; gap: 8px; align-items: center; padding: 8px 10px; cursor: pointer; border-radius: 6px; }
+        .layer-item:hover { background: rgba(255,255,255,0.03); }
+        .layer-item.active { background: rgba(255,255,255,0.04); font-weight: 700; }
+        @keyframes fadeIn { from { transform: translateY(-6px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
 
-/* ROTATION TOGGLE */
-#rotation-toggle { display:inline-flex; align-items:center; justify-content:center; width:42px; height:36px; margin-left:10px; border-radius:8px; border:2px solid rgba(255,255,255,0.08); background:transparent; color:#fff; cursor:pointer; font-size:18px; line-height:1; }
-#rotation-toggle.locked { border-color:#3498db; color:#3498db; }
+        /* pulsate animation for layer button when layer changes */
+        .pulse {
+            animation: pulse-scale 360ms ease;
+        }
+        @keyframes pulse-scale { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+        
+        /* --- MAP CONTROLS --- */
+        .map-controls {
+            position: absolute; top: 44px; left: 10px; z-index: 1002;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .map-controls-right {
+            position: absolute; top: 44px; right: 10px; z-index: 1003;
+            display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+        }
+        #map-box.collapsed .map-controls { display: none; }
+        .map-btn {
+            width: 38px; height: 38px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(0,0,0,0.45); color: #fff; cursor: pointer;
+            font-size: 16px; font-weight: 700;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: transform 0.12s ease, background 0.12s;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .map-btn:hover { background: rgba(255,255,255,0.06); transform: translateY(-2px); }
+        #layer-toggle {
+            font-size: 16px; padding: 6px; width: 42px; height: 36px; border-radius: 8px;
+            /* Pulsante in tono grigio/nero */
+            background: linear-gradient(180deg, #2a2a2a, #0f0f0f);
+            color: #f2f2f2; border: 1px solid rgba(255,255,255,0.04);
+            cursor: pointer; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+        }
 
-/* MODALE HOTSPOT */
-#info-modal { position:fixed; inset:0; z-index:20000; display:none; }
-#info-modal .info-backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.6); }
-#info-modal .info-content { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,calc(100%-40px)); background:linear-gradient(180deg,#0f0f12,#111217); color:#fff; padding:14px 16px; border-radius:10px; box-shadow:0 20px 60px rgba(0,0,0,0.6); }
-#info-modal .info-close { position:absolute; right:10px; top:10px; background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; }
-#info-modal .info-flex { display:flex; gap:14px; align-items:flex-start; }
-#info-modal .info-text { flex:1 1 60%; }
-#info-modal .info-image { flex:0 0 180px; display:none; }
-#info-modal .info-image img { width:100%; height:auto; border-radius:6px; display:block; }
-#info-modal h3 { margin:2px 0 8px 0; font-size:16px; }
-#info-modal #info-body { font-size:13px; color:#ddd; white-space:pre-wrap; }
-</style>
+#layer-toggle:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
+#layer-toggle:focus { outline: 3px solid rgba(255,255,255,0.06); }
+
+        /* --- HOTSPOT NATIVO (CENTRATO) --- */
+        .hotspot-info {
+            width: 34px; height: 34px;
+            background: linear-gradient(180deg, #0b3d91, #082b5f);
+            border: 2px solid rgba(255,255,255,0.12);
+            border-radius: 50%;
+            cursor: pointer;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            z-index: 10010;
+            /* Forza la centratura rispetto al punto di aggancio di Marzipano */
+            position: absolute;
+            margin-top: -17px; 
+            margin-left: -17px;
+            transition: transform 0.12s ease, box-shadow 0.12s;
+            box-shadow: 0 6px 18px rgba(11,61,145,0.24);
+        }
+        .hotspot-info:hover { transform: scale(1.08); box-shadow: 0 10px 22px rgba(11,61,145,0.28); }
+        .hotspot-info .hotspot-plus {
+            font-size: 18px; line-height: 1; display:flex; align-items:center; justify-content:center;
+            width: 100%; height: 100%; margin: 0; padding: 0;
+        }
+
+        /* --- GALLERY CONTROLS --- */
+        #controls-wrapper {
+            position: absolute; bottom: 0; width: 100%; z-index: 1001;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
+            transition: transform 0.3s;
+        }
+        #controls-wrapper.collapsed { transform: translateY(calc(100% - 40px)); }
+        #controls-toggle {
+            width: calc(100% - 160px); background: transparent; color: #aaa; border: none;
+            padding: 10px; cursor: pointer; font-size: 11px; letter-spacing: 1px; display: inline-block; vertical-align: middle;
+        }
+        #rotation-toggle {
+            display: inline-flex; align-items: center; justify-content: center;
+            vertical-align: middle; margin-left: 10px;
+            width: 42px; height: 36px; padding: 6px; border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.08);
+            background: transparent; color: #fff; cursor: pointer; font-size: 18px; line-height: 1;
+        }
+        /* stato locked: mantenere sfondo trasparente, evidenzia con bordo e colore icona */
+        #rotation-toggle.locked { background: transparent; border-color: var(--accent); color: var(--accent); }
+        #controls { display: flex; gap: 10px; padding: 15px; justify-content: center; overflow-x: auto; }
+        .scene-btn {
+            width: 80px; border-radius: 6px; border: 2px solid transparent;
+            cursor: pointer; background: #222; overflow: hidden; flex-shrink: 0;
+        }
+        .scene-btn.active { border-color: var(--accent); }
+        .scene-btn img { width: 100%; height: 40px; object-fit: cover; display: block; }
+        .btn-label { font-size: 9px; color: white; padding: 3px; text-align: center; }
+
+        /* NAVIGAZIONE */
+        .nav-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            width: 45px; height: 45px; border-radius: 50%; border: none;
+            background: var(--bg-glass); color: white; cursor: pointer; z-index: 1000;
+        }
+        .nav-arrow.left { left: 15px; }
+        .nav-arrow.right { right: 15px; }
+
+        /* Cursore a mano su tutti gli elementi cliccabili del progetto */
+        button, .map-btn, .hover-toggle, .scene-btn, .nav-arrow, .hotspot-info, .layer-item, #layer-toggle, #map-hover-toggle, #gallery-hover-toggle {
+            cursor: pointer;
+        }
+        /* Leaflet interactive shapes (marker, polylines, etc.) devono mostrare il puntatore */
+        .leaflet-interactive { cursor: pointer !important; }
+    </style>
 </head>
 <body>
 
@@ -53,138 +208,547 @@ body, html { margin:0; padding:0; height:100%; background:#000; overflow:hidden;
 <div id="title">VIRTUAL TOUR 360°</div>
 
 <div id="map-box">
-    <div id="mapContainer"></div>
-    <div class="map-controls">
-        <button class="map-btn" onclick="zoomIn()">+</button>
-        <button class="map-btn" onclick="zoomOut()">−</button>
-        <button class="map-btn" onclick="toggleLayer()">🗺️</button>
+    <div class="map-header">
+        <div style="display:flex;align-items:center;gap:6px">
+            <div class="map-title">Mappa</div>
+            <div class="map-layer-name" id="map-layer-name">OSM</div>
+        </div>
+        <!-- header controls left intentionally minimal; layer button moved into map controls -->
     </div>
+    <div id="mapContainer"></div>
+    <div class="map-attribution" id="map-attribution"></div>
+    <div class="map-controls">
+        <button class="map-btn" onclick="zoomIn()" title="Zoom In">+</button>
+        <button class="map-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+    </div>
+    <!-- Pulsanti a destra (es. cambio layer) - stessa tipologia dei map-btn ma posizionati a destra -->
+    <div class="map-controls-right">
+        <button class="map-btn" id="layer-toggle" onclick="toggleLayer()" title="Cambia strato" aria-label="Cambia strato">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 3L2 8l10 5 10-5-10-5z" fill="currentColor"/>
+                <path d="M12 10l-10 5 10 5 10-5-10-5z" fill="currentColor" opacity="0.9"/>
+                <path d="M12 17l-10 5 10 5 10-5-10-5z" fill="currentColor" opacity="0.7" transform="translate(0,-8) scale(0.9)"/>
+            </svg>
+        </button>
+    </div>
+    <button id="map-hover-toggle" class="hover-toggle" onclick="toggleMap()" title="Espandi/Comprimi mappa">⤢</button>
 </div>
 
 <div id="controls-wrapper">
+    <button id="controls-toggle" onclick="toggleControls()" title="Espandi/Contrai galleria viste" aria-label="Espandi o comprimi la galleria viste">
+        <span style="display:inline-flex;align-items:center;gap:8px">GALLERIA VISTE
+            <!-- Freccia verso il basso per indicare espandi/contrai -->
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M7 10l5 5 5-5H7z" fill="currentColor" />
+            </svg>
+        </span>
+    </button>
+    <button id="gallery-hover-toggle" class="hover-toggle" onclick="toggleControls()" title="Espandi/Contrai galleria viste" aria-label="Espandi o comprimi la galleria viste">⇳</button>
+    <button id="rotation-toggle" onclick="toggleRotation(event)" title="Blocca rotazione" aria-label="Blocca rotazione">🔄</button>
     <div id="controls"></div>
-    <button id="rotation-toggle" onclick="toggleRotation(event)">🔄</button>
 </div>
 
+<button class="nav-arrow left" onclick="navigateScene(-1)">❮</button>
+<button class="nav-arrow right" onclick="navigateScene(1)">❯</button>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
 <script src="./marzipano.js"></script>
 <script src="./data.js"></script>
 
 <script>
-const panoramaFiles = ['panorama1.jpg','panorama2.jpg','panorama3.jpg'];
+const panoramaFiles = ['panorama1.jpg', 'panorama2.jpg', 'panorama3.jpg'];
 const folder = './panorami/';
 
-let viewer = new Marzipano.Viewer(document.getElementById('pano'));
-let scenes=[], markers=[], map, currentView, currentSceneIndex=0;
-let autorotate = Marzipano.autorotate({yawSpeed:0.03,targetPitch:0});
-let rotationLocked=false, rotationTimer=null;
-let baseLayer,satelliteLayer,layers=[],currentLayerIndex=0;
+var viewer = new Marzipano.Viewer(document.getElementById('pano'));
+var scenes = [];
+var markers = [];
+var map, currentView, currentSceneIndex = 0;
+var autorotate = Marzipano.autorotate({ yawSpeed: 0.03, targetPitch: 0 });
+var baseLayer, satelliteLayer, cartoLayer, layers = [], currentLayerIndex = 0;
+var rotationLocked = false;
+var rotationTimer = null; // timer per riabilitare la rotazione dopo X ms
+var rotationLockMode = null; // null | 'manual' | 'temporary'
 
-// INIZIALIZZA MAPPA
-function initMap() {
-    map = L.map('mapContainer',{zoomControl:false,attributionControl:false});
-    baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'&copy; OpenStreetMap contributors' });
-    satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{ attribution:'Esri' });
-    layers = [baseLayer, satelliteLayer];
-    layers[0].addTo(map);
+function convertToDecimal(ref, deg, min, sec) {
+    var factor = (ref === 'S' || ref === 'W') ? -1 : 1;
+    return factor * (deg + (min / 60) + (sec / 3600));
 }
 
-// LAYER
-function toggleLayer() {
-    map.removeLayer(layers[currentLayerIndex]);
-    currentLayerIndex=(currentLayerIndex+1)%layers.length;
-    layers[currentLayerIndex].addTo(map);
+function getGpsData(url) {
+    return new Promise((resolve) => {
+        var img = new Image();
+        img.onload = function() {
+            EXIF.getData(img, function() {
+                var lat = EXIF.getTag(this, "GPSLatitude");
+                var lng = EXIF.getTag(this, "GPSLongitude");
+                if (lat && lng) {
+                    resolve({
+                        lat: convertToDecimal(EXIF.getTag(this, "GPSLatitudeRef"), lat[0], lat[1], lat[2]),
+                        lng: convertToDecimal(EXIF.getTag(this, "GPSLongitudeRef"), lng[0], lng[1], lng[2])
+                    });
+                } else resolve(null);
+            });
+        };
+        img.src = url;
+    });
 }
 
-// ZOOM
-function zoomIn(){ map.zoomIn(); }
-function zoomOut(){ map.zoomOut(); }
+async function init() {
+    // Leggi i dati GPS in parallelo (più veloce rispetto al caricamento sequenziale)
+    let locations = [];
+    try {
+        var gpsPromises = panoramaFiles.map(file => getGpsData(folder + file).then(coords => ({ coords, file })).catch(err => ({ coords: null, file })));
+        var gpsResults = await Promise.all(gpsPromises);
+        locations = gpsResults.filter(r => r.coords).map(r => ({ ...r.coords, file: r.file }));
+    } catch (e) {
+        console.warn('Errore lettura GPS in parallelo, riprovo sequenzialmente', e);
+        for (let file of panoramaFiles) {
+            try {
+                let coords = await getGpsData(folder + file);
+                if (coords) locations.push({ ...coords, file: file });
+            } catch (err) { /* ignore */ }
+        }
+    }
 
-// CREAZIONE SCENE
-function createScenes() {
-    panoramaFiles.forEach((file,index)=>{
-        let source=Marzipano.ImageUrlSource.fromString(folder+file);
-        let geometry= new Marzipano.EquirectGeometry([{width:4000}]);
-        let limiter=Marzipano.RectilinearView.limit.traditional(4000,100*Math.PI/180);
-        let view = new Marzipano.RectilinearView({yaw:0,pitch:0,fov:Math.PI/2},limiter);
-        let scene = viewer.createScene({source,geometry,view});
-        scenes.push({scene,view,hotspotsCreated:false});
+    map = L.map('mapContainer', { zoomControl: false, attributionControl: false });
+    
+    // Layer base (OpenStreetMap) - default più familiare e professionale
+    baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    });
+    
+    // Layer satellitare
+    satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri'
+    });
+
+    // Layer Carto (light)
+    cartoLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CartoDB'
+    });
+
+    // layers array: ogni elemento ha {layer, name, icon}
+    layers = [
+        { layer: baseLayer, name: 'OSM', icon: '🗺️', attribution: '© OpenStreetMap contributors' },
+        { layer: satelliteLayer, name: 'Satellite', icon: '🛰️', attribution: 'Esri' },
+        { layer: cartoLayer, name: 'Carto Light', icon: '🗺️', attribution: 'CartoDB' }
+    ];
+
+    // usa la funzione setLayer per aggiungere il layer di default
+    setLayer(0);
+    // costruisci il menu dei layer
+    buildLayerMenu();
+
+    locations.forEach((data, index) => {
+        var source = Marzipano.ImageUrlSource.fromString(folder + data.file);
+        var geometry = new Marzipano.EquirectGeometry([{ width: 4000 }]);
+        var limiter = Marzipano.RectilinearView.limit.traditional(4000, 100*Math.PI/180);
+        var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: Math.PI/2 }, limiter);
+        var scene = viewer.createScene({ source: source, geometry: geometry, view: view });
         
-        // Marker su mappa
-        let marker = L.circleMarker([45+index*0.001,10+index*0.001], {radius:7, fillColor:"#3498db", color:"#fff", weight:2, fillOpacity:1}).addTo(map);
-        marker.on('click',()=>switchScene(index));
+        scenes.push({ scene, view, lat: data.lat, lng: data.lng, hotspotsCreated: false });
+
+        var marker = L.circleMarker([data.lat, data.lng], { radius: 7, fillColor: "#3498db", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map);
+        marker.on('click', () => switchScene(index));
         markers.push(marker);
 
-        // Pulsante galleria
-        let btn = document.createElement('button'); btn.className='scene-btn';
-        btn.innerHTML=`<img src="${folder+file}"><div class="btn-label">Punto ${index+1}</div>`;
-        btn.onclick=()=>switchScene(index);
+        var btn = document.createElement('button');
+        btn.className = 'scene-btn';
+        btn.innerHTML = `<img src="${folder + data.file}"><div class="btn-label">Punto ${index+1}</div>`;
+        btn.onclick = () => switchScene(index);
         document.getElementById('controls').appendChild(btn);
     });
 
-    map.fitBounds(L.latLngBounds(markers.map(m=>m.getLatLng())),{padding:[30,30]});
-}
+    map.fitBounds(L.latLngBounds(locations.map(l => [l.lat, l.lng])), {padding: [30,30]});
 
-// SWITCH SCENA
-function switchScene(index){
-    let data = scenes[index];
-    data.scene.switchTo({transitionDuration:1000});
-    currentView=data.view;
-    currentSceneIndex=index;
-    map.panTo(markers[index].getLatLng());
-    markers.forEach((m,i)=>m.setStyle({fillColor:i===index?"#27ae60":"#3498db"}));
-    document.querySelectorAll('.scene-btn').forEach((b,i)=>b.classList.toggle('active',i===index));
-    addHotspots(index);
-    if(!rotationLocked){ startAutoRotation(); } else { stopAutoRotation(); }
-}
+    // --- LOGICA COORDINATE PER F12 ---
+    // Cattura le coordinate yaw/pitch del punto cliccato (non del centro della view)
+    document.getElementById('pano').addEventListener('mousedown', function(ev) {
+        if (!currentView) return;
+        try {
+            var rect = this.getBoundingClientRect();
+            var x = ev.clientX - rect.left;
+            var y = ev.clientY - rect.top;
+            // Usa l'API di Marzipano per convertire coordinate schermo -> yaw/pitch
+            var coords = currentView.screenToCoordinates({ x: x, y: y });
+            if (coords && typeof coords.yaw === 'number') {
+                console.log('%c📍 NUOVO HOTSPOT:', 'color: #e74c3c; font-weight: bold;');
+                console.log(`{ "yaw": ${coords.yaw.toFixed(4)}, "pitch": ${coords.pitch.toFixed(4)}, "title": "Titolo", "text": "Descrizione" },`);
+                return;
+            }
+        } catch (err) {
+            // fallback: se la conversione fallisce, logga la view corrente
+            console.warn('screenToCoordinates failed, falling back to currentView center', err);
+        }
+        // Fallback: logga lo yaw/pitch corrente (centro view)
+        try {
+            var yaw = currentView.yaw();
+            var pitch = currentView.pitch();
+            console.log('%c📍 NUOVO HOTSPOT (fallback center):', 'color: #e74c3c; font-weight: bold;');
+            console.log(`{ "yaw": ${yaw.toFixed(4)}, "pitch": ${pitch.toFixed(4)}, "title": "Titolo", "text": "Descrizione" },`);
+        } catch(e) {}
+    });
 
-// HOTSPOT SYCIUS
-function addHotspots(index){
-    if(index!==0) return;
-    if(scenes[index].hotspotsCreated) return;
-    let hsData={yaw:0.5,pitch:0.1,title:"Sycius",text:"Testo descrizione Sycius",image:"./panorami/sycius.jpg"};
-    let el=document.createElement('div'); el.className='hotspot-info'; el.innerHTML='<span class="hotspot-plus">+</span>';
-    el.onclick=()=>showInfoHotspot(hsData.title,hsData.text,hsData.image);
-    scenes[index].scene.hotspotContainer().createHotspot(el,{yaw:hsData.yaw,pitch:hsData.pitch});
-    scenes[index].hotspotsCreated=true;
-}
-
-// ROTAZIONE
-function stopAutoRotation(){ viewer.stopMovement(); try{ viewer.setIdleMovement(false); }catch(e){} }
-function startAutoRotation(){ viewer.startMovement(autorotate); viewer.setIdleMovement(3000,autorotate); }
-document.getElementById('pano').addEventListener('mousedown',stopAutorotateTemp);
-document.getElementById('pano').addEventListener('touchstart',stopAutorotateTemp);
-function stopAutorotateTemp(){
-    stopAutoRotation(); rotationLocked=true;
-    if(rotationTimer) clearTimeout(rotationTimer);
-    rotationTimer=setTimeout(()=>{ rotationLocked=false; startAutoRotation(); updateRotationButton(); },60000);
+    switchScene(0);
+    // Aggiorna la visualizzazione del pulsante di rotazione (nascondilo se la rotazione è attiva)
     updateRotationButton();
 }
 
-// PULSANTE ROTAZIONE
-function toggleRotation(e){ e.stopPropagation(); if(rotationLocked){ rotationLocked=false; startAutoRotation(); } else { rotationLocked=true; stopAutoRotation(); } updateRotationButton(); }
-function updateRotationButton(){ document.getElementById('rotation-toggle').classList.toggle('locked',rotationLocked); }
+function switchScene(index) {
+    var data = scenes[index];
+    data.scene.switchTo({ transitionDuration: 1000 });
+    currentView = data.view;
+    currentSceneIndex = index;
+    
+    map.panTo([data.lat, data.lng]);
+    markers.forEach((m, i) => m.setStyle({ fillColor: i === index ? "#27ae60" : "#3498db" }));
 
-// MODALE HOTSPOT
-function showInfoHotspot(title,text,imageUrl){
-    var existing=document.getElementById('info-modal'); 
-    if(!existing){ 
-        let modal=document.createElement('div'); modal.id='info-modal'; 
-        modal.innerHTML=`<div class="info-backdrop" onclick="hideInfoHotspot()"></div>
-            <div class="info-content"><button class="info-close" onclick="hideInfoHotspot()">✕</button>
-            <h3 id="info-title"></h3><div id="info-body"></div><img id="info-image" style="max-width:300px; display:block; margin-top:10px;" /></div>`;
-        document.body.appendChild(modal);
+    // Creazione Hotspot Nativa
+    if (window.data && window.data.scenes[index]) {
+        var sceneData = window.data.scenes[index];
+        var container = data.scene.hotspotContainer();
+
+        // Rimuovi eventuali hotspot precedenti (protezione contro rimozioni accidentali)
+        try {
+            document.querySelectorAll('.hotspot-info').forEach(n => n.remove());
+        } catch (e) { /* non critico */ }
+
+        if (sceneData.infoHotspots && sceneData.infoHotspots.length) {
+            sceneData.infoHotspots.forEach((hs, i) => {
+                var el = document.createElement('div');
+                el.className = 'hotspot-info';
+                el.innerHTML = '<span class="hotspot-plus">+</span>';
+                el.onclick = (e) => { e.stopPropagation(); showInfoHotspot(hs.title, hs.text, hs.image || null); };
+                container.createHotspot(el, { yaw: hs.yaw, pitch: hs.pitch });
+            });
+            data.hotspotsCreated = true;
+        } else {
+            data.hotspotsCreated = false;
+        }
     }
-    document.getElementById('info-title').innerText=title||'';
-    document.getElementById('info-body').innerText=text||'';
-    let img=document.getElementById('info-image');
-    if(imageUrl){ img.src=imageUrl; img.style.display='block'; } else{ img.src=''; img.style.display='none'; }
-    document.getElementById('info-modal').style.display='block';
-}
-function hideInfoHotspot(){ document.getElementById('info-modal').style.display='none'; }
 
-// INIT
-initMap(); createScenes(); switchScene(0);
+    if (!rotationLocked) {
+        viewer.startMovement(autorotate);
+        viewer.setIdleMovement(3000, autorotate);
+    } else {
+        viewer.stopMovement();
+        try { viewer.setIdleMovement(false); } catch(e) { /* ignore if API differs */ }
+    }
+
+    document.querySelectorAll('.scene-btn').forEach((b, i) => b.classList.toggle('active', i === index));
+}
+
+function navigateScene(dir) {
+    let next = currentSceneIndex + dir;
+    if (next >= 0 && next < scenes.length) switchScene(next);
+}
+
+function toggleMap() {
+    document.getElementById('map-box').classList.toggle('collapsed');
+    setTimeout(() => map.invalidateSize(), 400);
+}
+
+function toggleControls() {
+    document.getElementById('controls-wrapper').classList.toggle('collapsed');
+}
+
+// Abilita espansione/contrazione della galleria al passaggio del mouse
+(function enableGalleryHover() {
+    var cw = document.getElementById('controls-wrapper');
+    if (!cw) return;
+    var enterTimer = null;
+    var leaveTimer = null;
+    var enterDelay = 120; // ms
+    var leaveDelay = 300; // ms
+
+    cw.addEventListener('mouseenter', function() {
+        if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
+        if (enterTimer) clearTimeout(enterTimer);
+        enterTimer = setTimeout(function() { cw.classList.remove('collapsed'); enterTimer = null; }, enterDelay);
+    });
+
+    cw.addEventListener('mouseleave', function() {
+        if (enterTimer) { clearTimeout(enterTimer); enterTimer = null; }
+        if (leaveTimer) clearTimeout(leaveTimer);
+        leaveTimer = setTimeout(function() { cw.classList.add('collapsed'); leaveTimer = null; }, leaveDelay);
+    });
+
+    // Anche il pulsante hover (piccolo) deve aprire al passaggio
+    var hoverBtn = document.getElementById('gallery-hover-toggle');
+    if (hoverBtn) {
+        hoverBtn.addEventListener('mouseenter', function() { if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; } cw.classList.remove('collapsed'); });
+        hoverBtn.addEventListener('mouseleave', function() { if (leaveTimer) clearTimeout(leaveTimer); leaveTimer = setTimeout(function(){ cw.classList.add('collapsed'); }, leaveDelay); });
+    }
+})();
+
+function zoomIn() {
+    map.zoomIn();
+}
+
+function zoomOut() {
+    map.zoomOut();
+}
+
+function toggleLayer() {
+    // cicla tra i layer disponibili
+    var next = (currentLayerIndex + 1) % layers.length;
+    setLayer(next);
+}
+
+function setLayer(index) {
+    if (!layers || !layers.length) return;
+    if (typeof index !== 'number' || index < 0 || index >= layers.length) {
+        console.warn('setLayer: indice non valido', index);
+        return;
+    }
+    // rimuovi solo i tile-layer definiti in `layers` (non toccare marker/altre overlay)
+    try {
+        layers.forEach((l, i) => {
+            try {
+                if (i !== index && map && map.hasLayer && map.hasLayer(l.layer)) map.removeLayer(l.layer);
+            } catch(e) { /* ignora singoli errori */ }
+        });
+    } catch(e) { console.warn('setLayer: errore rimozione layer', e); }
+    // aggiungi nuovo layer se non è già presente
+    try {
+        if (map && !map.hasLayer(layers[index].layer)) layers[index].layer.addTo(map);
+    } catch(e) { console.warn('setLayer: errore aggiunta layer', e); }
+    currentLayerIndex = index;
+    // aggiorna UI: icona, nome layer, attribuzione
+    var btn = document.getElementById('layer-toggle');
+    if (btn) {
+        // Mantieni l'icona SVG a strati (usa innerHTML con svg così rimane coerente al cambio)
+        btn.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 3L2 8l10 5 10-5-10-5z" fill="currentColor"/>
+                <path d="M12 10l-10 5 10 5 10-5-10-5z" fill="currentColor" opacity="0.9"/>
+                <path d="M12 17l-10 5 10 5 10-5-10-5z" fill="currentColor" opacity="0.7" transform="translate(0,-8) scale(0.9)"/>
+            </svg>`;
+        btn.title = 'Cambia strato';
+        // animazione di feedback
+        btn.classList.add('pulse');
+        setTimeout(() => btn.classList.remove('pulse'), 380);
+    }
+    var nameEl = document.getElementById('map-layer-name');
+    if (nameEl) nameEl.innerText = layers[index].name;
+    var attr = document.getElementById('map-attribution');
+    if (attr) attr.innerText = layers[index].attribution || '';
+    // aggiorna stato menu se visibile
+    var menu = document.getElementById('layer-menu');
+    if (menu) {
+        Array.from(menu.children).forEach((ch, i) => ch.classList.toggle('active', i === index));
+    }
+    // Forza ridisegno mappa per assicurarsi che i tiles vengano richiesti
+    try { if (map && typeof map.invalidateSize === 'function') map.invalidateSize(); } catch(e) {}
+}
+
+function toggleLayerMenu(e) {
+    e && e.stopPropagation && e.stopPropagation();
+    var menu = document.getElementById('layer-menu');
+    if (!menu) return;
+    menu.classList.toggle('show');
+}
+
+function hideLayerMenu() {
+    var menu = document.getElementById('layer-menu');
+    if (menu) menu.classList.remove('show');
+}
+
+// Crea le voci del menu layer
+function buildLayerMenu() {
+    var menu = document.getElementById('layer-menu');
+    if (!menu || !layers) return;
+    menu.innerHTML = '';
+    layers.forEach((l, i) => {
+        var it = document.createElement('div');
+        it.className = 'layer-item' + (i === currentLayerIndex ? ' active' : '');
+        it.innerHTML = `<span style="width:20px">${l.icon}</span><span>${l.name}</span>`;
+        // usa addEventListener per evitare problemi di scoping/override
+        it.addEventListener('click', function(ev) { ev.stopPropagation(); setLayer(i); hideLayerMenu(); });
+        menu.appendChild(it);
+    });
+}
+
+// nascondi menu cliccando fuori
+document.addEventListener('click', function(e) { hideLayerMenu(); });
+document.addEventListener('touchstart', function(e) { hideLayerMenu(); });
+
+function updateRotationButton() {
+    var btn = document.getElementById('rotation-toggle');
+    if (!btn) return;
+    if (rotationLocked) {
+        // mostra il pulsante come 'sblocca' quando la rotazione è ferma
+        btn.style.display = 'inline-flex';
+        btn.classList.add('locked');
+        btn.innerHTML = '🔄';
+        btn.title = 'Riprendi rotazione';
+        btn.setAttribute('aria-label', 'Riprendi rotazione');
+    } else {
+        // nascondi il pulsante quando la rotazione è attiva
+        btn.style.display = 'none';
+        btn.classList.remove('locked');
+        btn.innerHTML = '🔄';
+        btn.title = 'Blocca rotazione';
+        btn.setAttribute('aria-label', 'Blocca rotazione');
+    }
+}
+
+function stopAutoRotation() {
+    try { viewer.stopMovement(); } catch(e) {}
+    try { viewer.setIdleMovement(false); } catch(e) {}
+    // Forza l'azzeramento di qualsiasi movimento impostando la view
+    try {
+        if (currentView && typeof currentView.yaw === 'function') {
+            var _y = currentView.yaw();
+            var _p = currentView.pitch();
+            // Re-imposta gli angoli correnti per rimuovere eventuale inerzia
+            if (typeof currentView.setYaw === 'function') currentView.setYaw(_y);
+            if (typeof currentView.setPitch === 'function') currentView.setPitch(_p);
+        }
+    } catch(e) { /* non critico */ }
+}
+
+function startAutoRotation() {
+    try { viewer.startMovement(autorotate); viewer.setIdleMovement(3000, autorotate); } catch(e) {}
+}
+
+function toggleRotation(e) {
+    // Previeni che il click sul pulsante venga intercettato da altri handler (es. del viewer)
+    try { if (e) { e.stopImmediatePropagation(); e.preventDefault(); } } catch(err) {}
+
+    var btn = document.getElementById('rotation-toggle');
+    if (!rotationLocked) {
+        // manual lock
+        rotationLocked = true;
+        rotationLockMode = 'manual';
+        stopAutoRotation();
+
+        // Forza fissaggio angoli per evitare inerzia
+        try {
+            if (currentView && typeof currentView.yaw === 'function') {
+                var _y = currentView.yaw();
+                var _p = currentView.pitch();
+                if (typeof currentView.setYaw === 'function') currentView.setYaw(_y);
+                if (typeof currentView.setPitch === 'function') currentView.setPitch(_p);
+            }
+        } catch(err) {}
+
+        // Disabilita brevemente i controlli del viewer per evitare che un drag/click subito dopo riattivi il movimento
+        try { if (viewer && typeof viewer.controls === 'function' && viewer.controls().disable) { viewer.controls().disable(); setTimeout(()=>{ try{ viewer.controls().enable(); }catch(e){} }, 50); } } catch(err) {}
+
+        // cancel any temporary timer
+        if (rotationTimer) { clearTimeout(rotationTimer); rotationTimer = null; }
+    } else {
+        // unlock (whether manual or temporary)
+        rotationLocked = false;
+        rotationLockMode = null;
+        // cancel timer if present
+        if (rotationTimer) { clearTimeout(rotationTimer); rotationTimer = null; }
+        startAutoRotation();
+    }
+    updateRotationButton();
+}
+
+// Quando la rotazione è bloccata, assicuriamoci che qualsiasi click/touch non riattivi
+function enforceRotationLockOnInteraction(e) {
+    // Ignora interazioni originate dal pulsante di controllo della rotazione
+    try {
+        if (e && e.target && typeof e.target.closest === 'function' && e.target.closest('#rotation-toggle')) return;
+    } catch (err) {}
+
+    if (!rotationLocked || rotationLockMode === 'temporary') {
+        rotationLocked = true;
+        rotationLockMode = 'temporary';
+        stopAutoRotation();
+        if (rotationTimer) clearTimeout(rotationTimer);
+        rotationTimer = setTimeout(() => {
+            if (rotationLockMode === 'temporary') {
+                rotationLocked = false;
+                rotationLockMode = null;
+                startAutoRotation();
+                updateRotationButton();
+            }
+            rotationTimer = null;
+        }, 1 * 60 * 1000);
+    }
+    updateRotationButton();
+}
+
+// Listener in capturing phase per intercettare prima degli handler UI
+document.addEventListener('click', enforceRotationLockOnInteraction, true);
+document.addEventListener('touchend', enforceRotationLockOnInteraction, true);
+document.addEventListener('mousedown', enforceRotationLockOnInteraction, true);
+
+init();
+
+// --- MODALE INFORMAZIONI HOTSPOT (custom, evita alert nativo con origine) ---
+// showInfoHotspot(title, text, imageUrl)
+function showInfoHotspot(title, text, imageUrl) {
+    var existing = document.getElementById('info-modal');
+    if (!existing) {
+        var modal = document.createElement('div');
+        modal.id = 'info-modal';
+        modal.innerHTML = `
+            <div class="info-backdrop" id="info-backdrop"></div>
+            <div class="info-content" role="dialog" aria-modal="true" aria-labelledby="info-title">
+                <button class="info-close" id="info-close" aria-label="Chiudi">✕</button>
+                <div class="info-flex">
+                    <div class="info-text">
+                        <h3 id="info-title"></h3>
+                        <div id="info-body"></div>
+                    </div>
+                    <div class="info-image" id="info-image" aria-hidden="true">
+                        <img id="info-image-img" src="" alt="" />
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // styles inline per semplicità
+        var css = `
+            #info-modal { position: fixed; inset: 0; z-index: 20000; display: block; }
+            #info-modal .info-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+            #info-modal .info-content { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+                width: min(760px, calc(100% - 40px)); background: linear-gradient(180deg,#0f0f12, #111217);
+                color: #fff; padding: 14px 16px; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            }
+            #info-modal .info-close { position: absolute; right: 10px; top: 10px; background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; }
+            #info-modal .info-flex { display: flex; gap: 14px; align-items: flex-start; }
+            #info-modal .info-text { flex: 1 1 60%; }
+            #info-modal .info-image { flex: 0 0 180px; display: none; }
+            #info-modal .info-image img { width: 100%; height: auto; border-radius: 6px; display:block }
+            #info-modal h3 { margin: 2px 0 8px 0; font-size: 16px; }
+            #info-modal #info-body { font-size: 13px; color: #ddd; white-space: pre-wrap; }
+        `;
+        var style = document.createElement('style'); style.appendChild(document.createTextNode(css)); document.head.appendChild(style);
+
+        // events
+        modal.querySelector('#info-close').addEventListener('click', hideInfoHotspot);
+        modal.querySelector('#info-backdrop')?.addEventListener('click', hideInfoHotspot);
+        document.addEventListener('keydown', function onEsc(e){ if (e.key === 'Escape') hideInfoHotspot(); });
+    }
+    document.getElementById('info-title').innerText = title || '';
+    document.getElementById('info-body').innerText = text || '';
+    // image handling
+    var imgWrap = document.getElementById('info-image');
+    var imgEl = document.getElementById('info-image-img');
+    if (imageUrl) {
+        imgEl.src = imageUrl;
+        imgEl.alt = title || '';
+        imgWrap.style.display = 'block';
+    } else {
+        imgEl.src = '';
+        imgWrap.style.display = 'none';
+    }
+    document.getElementById('info-modal').style.display = 'block';
+}
+
+function hideInfoHotspot() {
+    var m = document.getElementById('info-modal');
+    if (m) m.style.display = 'none';
+}
 </script>
 </body>
 </html>

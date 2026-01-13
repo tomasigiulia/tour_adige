@@ -1,4 +1,11 @@
 var data = {
+  // Coordinate GPS manuali per ogni scena (priorità sulla lettura EXIF)
+  // Modifica questi valori con le coordinate corrette del tuo drone
+  "coordinates": [
+    { "lat": 45.6472, "lng": 12.2345 },    // Panorama 1 - MODIFICA QUI
+    { "lat": 45.6475, "lng": 12.2350 },    // Panorama 2 - MODIFICA QUI
+    { "lat": 45.6480, "lng": 12.2360 }     // Panorama 3 - MODIFICA QUI
+  ],
   "scenes": [
     {
       "id": "panorama1",

@@ -257,7 +257,10 @@
 <script src="./data.js"></script>
 
 <script>
-const panoramaFiles = ['panorama1.jpg', 'panorama2.jpg', 'panorama3.jpg'];
+// TILES per rendering (multi-risoluzione)
+const panoramaFiles = ['panorama1.tiles', 'panorama2.tiles', 'panorama3.tiles'];
+// JPG originali per lettura GPS EXIF
+const panoramaFilesForGps = ['panorama1.jpg', 'panorama2.jpg', 'panorama3.jpg'];
 // Determina il percorso base dinamicamente
 const baseURL = window.location.pathname.includes('/tour_adige/') 
     ? '/tour_adige/' 
@@ -284,16 +287,30 @@ function getGpsData(url) {
     return new Promise((resolve) => {
         var img = new Image();
         img.onload = function() {
-            EXIF.getData(img, function() {
-                var lat = EXIF.getTag(this, "GPSLatitude");
-                var lng = EXIF.getTag(this, "GPSLongitude");
-                if (lat && lng) {
-                    resolve({
-                        lat: convertToDecimal(EXIF.getTag(this, "GPSLatitudeRef"), lat[0], lat[1], lat[2]),
-                        lng: convertToDecimal(EXIF.getTag(this, "GPSLongitudeRef"), lng[0], lng[1], lng[2])
-                    });
-                } else resolve(null);
-            });
+            try {
+                EXIF.getData(img, function() {
+                    try {
+                        var lat = EXIF.getTag(this, "GPSLatitude");
+                        var lng = EXIF.getTag(this, "GPSLongitude");
+                        if (lat && lng) {
+                            resolve({
+                                lat: convertToDecimal(EXIF.getTag(this, "GPSLatitudeRef"), lat[0], lat[1], lat[2]),
+                                lng: convertToDecimal(EXIF.getTag(this, "GPSLongitudeRef"), lng[0], lng[1], lng[2])
+                            });
+                        } else resolve(null);
+                    } catch (e) {
+                        console.warn('EXIF parsing error for ' + url, e);
+                        resolve(null);
+                    }
+                });
+            } catch (e) {
+                console.warn('EXIF getData error for ' + url, e);
+                resolve(null);
+            }
+        };
+        img.onerror = function() { 
+            console.warn('Failed to load GPS image: ' + url);
+            resolve(null); 
         };
         img.src = url;
     });
@@ -306,18 +323,52 @@ async function init() {
     // Leggi i dati GPS in parallelo (più veloce rispetto al caricamento sequenziale)
     // Usa immagini più piccole per lettura GPS (più veloce)
     let locations = [];
+    let locationsFallback = false;
+    
+    console.log('=== CARICAMENTO COORDINATE DA GPS EXIF ===');
+    
+    // PRIORITÀ 1: Leggi direttamente dal GPS EXIF delle immagini JPG originali
     try {
-        var gpsPromises = panoramaFiles.map(file => getGpsData(folder + file).then(coords => ({ coords, file })).catch(err => ({ coords: null, file })));
+        console.log('Tentativo lettura GPS da immagini originali...');
+        var gpsPromises = panoramaFilesForGps.map((file, idx) => 
+            getGpsData(folder + file)
+                .then(coords => ({ coords, file: panoramaFiles[idx] }))
+                .catch(err => { console.warn('Errore GPS per ' + file, err); return { coords: null, file: null }; })
+        );
         var gpsResults = await Promise.all(gpsPromises);
-        locations = gpsResults.filter(r => r.coords).map(r => ({ ...r.coords, file: r.file }));
-    } catch (e) {
-        console.warn('Errore lettura GPS in parallelo, riprovo sequenzialmente', e);
-        for (let file of panoramaFiles) {
-            try {
-                let coords = await getGpsData(folder + file);
-                if (coords) locations.push({ ...coords, file: file });
-            } catch (err) { /* ignore */ }
+        locations = gpsResults
+            .filter(r => r.coords && r.file)
+            .map(r => ({ ...r.coords, file: r.file }));
+        if (locations.length > 0) {
+            console.log('✓ GPS letto da immagini (PRIORITÀ 2): ' + locations.length + ' coordinate trovate');
         }
+    } catch (e) {
+        console.warn('Errore lettura GPS in parallelo:', e);
+        // PRIORITÀ 2: Riprova sequenzialmente
+        for (let i = 0; i < panoramaFilesForGps.length; i++) {
+            try {
+                let coords = await getGpsData(folder + panoramaFilesForGps[i]);
+                if (coords) {
+                    locations.push({ ...coords, file: panoramaFiles[i] });
+                }
+            } catch (err) { 
+                console.warn('Errore GPS sequenziale per ' + panoramaFilesForGps[i], err);
+            }
+        }
+        if (locations.length > 0) {
+            console.log('✓ GPS letto sequenzialmente (PRIORITÀ 2): ' + locations.length + ' coordinate trovate');
+        }
+    }
+    
+    // PRIORITÀ 3: Se ancora nessuna coordinata, usa fallback simbolico
+    if (!locations.length) {
+        locationsFallback = true;
+        locations = panoramaFiles.map((file, idx) => ({
+            lat: 0.0001 * idx,
+            lng: 0.0001 * idx,
+            file
+        }));
+        console.warn('Nessun GPS trovato: uso fallback simbolico');
     }
 
     map = L.map('mapContainer', { zoomControl: false, attributionControl: false });
@@ -350,17 +401,47 @@ async function init() {
     buildLayerMenu();
 
     locations.forEach((data, index) => {
-        var source = Marzipano.ImageUrlSource.fromString(folder + data.file);
-        // Geometria multi-livello: zoom massimo aumentato per sfruttare la risoluzione nativa
-        var geometry = new Marzipano.EquirectGeometry([{ width: 1000 }, { width: 2000 }, { width: 4000 }, { width: 8000 }]);
+        // Configurazione tiles multi-risoluzione (come krpano)
+        var levels = [
+            { tileSize: 256, size: 256, fallbackOnly: true },  // Level 0: preview veloce
+            { tileSize: 512, size: 512 },                      // Level 1
+            { tileSize: 512, size: 1024 },                     // Level 2
+            { tileSize: 512, size: 2048 },                     // Level 3
+            { tileSize: 512, size: 4096 }                      // Level 4: massima risoluzione
+        ];
+        
+        // Se il file ha estensione .tiles usa CubeGeometry (tiles ottimizzati)
+        // altrimenti usa EquirectGeometry (immagine singola) come fallback
+        var isTiled = data.file.includes('.tiles');
+        var source, geometry;
+        
+        if (isTiled) {
+            // Configurazione tiles cube: carica solo le facce visibili e le tiles necessarie
+            var urlPrefix = folder + data.file;
+            source = Marzipano.ImageUrlSource.fromString(
+                urlPrefix + "/{f}/{z}/{y}/{x}.jpg",
+                { cubeMapPreviewUrl: urlPrefix + "/preview.jpg" }
+            );
+            // CubeGeometry: 6 facce (f/b/l/r/u/d) con 5 livelli di dettaglio (0-4)
+            geometry = new Marzipano.CubeGeometry(levels);
+        } else {
+            // Fallback: immagine equirettangolare singola con multi-risoluzione
+            source = Marzipano.ImageUrlSource.fromString(folder + data.file);
+            geometry = new Marzipano.EquirectGeometry([{ width: 1000 }, { width: 2000 }, { width: 4000 }, { width: 8000 }]);
+        }
+        
         var limiter = Marzipano.RectilinearView.limit.traditional(8000, 100*Math.PI/180);
         var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: Math.PI/2 }, limiter);
-        // pinFirstLevel mantiene in cache il primo livello per evitare ricaricamenti
+        
+        // Ottimizzazioni caricamento e memoria
         var scene = viewer.createScene({ 
             source: source, 
             geometry: geometry, 
             view: view,
-            pinFirstLevel: true  // Mantiene in cache per evitare ricaricamenti
+            pinFirstLevel: true,     // Mantiene livello 1 in cache (preview veloce)
+            textureStoreOpts: {
+                previouslyVisibleCacheSize: 256 * 1024 * 1024  // 256MB cache per tiles viste
+            }
         });
         
         scenes.push({ scene, view, lat: data.lat, lng: data.lng, hotspotsCreated: false });
@@ -371,10 +452,22 @@ async function init() {
 
         var btn = document.createElement('button');
         btn.className = 'scene-btn';
-        btn.innerHTML = `<img src="${folder + data.file}"><div class="btn-label">Punto ${index+1}</div>`;
+        // Usa preview.jpg per tiles, immagine originale per .jpg
+        var thumbSrc = isTiled ? folder + data.file + '/preview.jpg' : folder + data.file;
+        btn.innerHTML = `<img src="${thumbSrc}"><div class="btn-label">Punto ${index+1}</div>`;
         btn.onclick = () => switchScene(index);
         document.getElementById('controls').appendChild(btn);
     });
+    
+    // Se abbiamo coordinate reali facciamo fitBounds, altrimenti centriamo su (0,0)
+    if (!locationsFallback) {
+        map.fitBounds(L.latLngBounds(locations.map(l => [l.lat, l.lng])), {padding: [30,30]});
+    } else {
+        try { map.setView([0, 0], 2); } catch(e) { /* non critico */ }
+        // evidenzia nel titolo che la mappa è simbolica
+        const layerName = document.getElementById('map-layer-name');
+        if (layerName) layerName.innerText = 'OSM (no GPS)';
+    }
 
     map.fitBounds(L.latLngBounds(locations.map(l => [l.lat, l.lng])), {padding: [30,30]});
 

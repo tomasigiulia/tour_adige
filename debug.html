@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Tour</title>
+</head>
+<body style="background: #222; color: #fff; padding: 20px; font-family: monospace;">
+    <h1>Debug Test</h1>
+    <div id="log" style="background: #111; padding: 15px; border-radius: 8px; height: 400px; overflow-y: auto;"></div>
+    
+    <script>
+        function log(msg) {
+            console.log(msg);
+            document.getElementById('log').innerHTML += msg + '<br>';
+        }
+        
+        log('1. Page loaded');
+        
+        // Test Leaflet
+        log('2. Testing Leaflet...');
+        var leafletScript = document.createElement('script');
+        leafletScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+        leafletScript.onload = function() { log('✓ Leaflet loaded'); };
+        leafletScript.onerror = function() { log('✗ Leaflet FAILED'); };
+        document.head.appendChild(leafletScript);
+        
+        // Test data.js
+        log('3. Testing data.js...');
+        var dataScript = document.createElement('script');
+        dataScript.src = './data.js';
+        dataScript.onload = function() { 
+            log('✓ data.js loaded');
+            if (window.data) log('  ✓ window.data exists: ' + window.data.scenes.length + ' scenes');
+            else log('  ✗ window.data NOT FOUND');
+        };
+        dataScript.onerror = function(e) { log('✗ data.js FAILED: ' + e.message); };
+        document.head.appendChild(dataScript);
+        
+        // Test marzipano.js
+        log('4. Testing marzipano.js...');
+        var marzScript = document.createElement('script');
+        marzScript.src = './marzipano.js';
+        marzScript.onload = function() { 
+            log('✓ marzipano.js loaded');
+            if (window.Marzipano) log('  ✓ window.Marzipano exists');
+            else log('  ✗ window.Marzipano NOT FOUND');
+        };
+        marzScript.onerror = function(e) { log('✗ marzipano.js FAILED: ' + e.message); };
+        document.head.appendChild(marzScript);
+        
+        setTimeout(() => {
+            log('5. Final status:');
+            log('  - Leaflet: ' + (typeof L !== 'undefined' ? '✓' : '✗'));
+            log('  - Marzipano: ' + (typeof Marzipano !== 'undefined' ? '✓' : '✗'));
+            log('  - data: ' + (typeof data !== 'undefined' ? '✓' : '✗'));
+        }, 2000);
+    </script>
+</body>
+</html>

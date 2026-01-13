@@ -156,26 +156,156 @@
             width: 100%; height: 100%; margin: 0; padding: 0;
         }
 
+        /* --- CONTROL BAR (BARRA A DUE LIVELLI) --- */
+        #control-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 132px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.8));
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #control-bar.collapsed {
+            transform: translateY(132px);
+        }
+
+        /* --- TOGGLE BUTTON --- */
+        #bar-toggle {
+            position: fixed;
+            bottom: 132px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 28px;
+            background: linear-gradient(180deg, rgba(44, 62, 80, 0.95), rgba(20, 30, 40, 0.95));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px 14px 0 0;
+            color: #fff;
+            border-bottom: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1002;
+        }
+        
+        #bar-toggle:hover {
+            background: linear-gradient(180deg, rgba(52, 152, 219, 0.9), rgba(30, 100, 180, 0.9));
+            border-color: rgba(52, 152, 219, 0.5);
+        }
+        
+        #bar-toggle.collapsed {
+            transform: translateX(-50%);
+            bottom: 0;
+        }
+
+        /* --- TOP ROW (44px) --- */
+        #control-bar-top {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .control-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* --- BOTTOM ROW (88px) --- */
+        #control-bar-bottom {
+            height: 88px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        /* --- THUMBNAILS STRIP --- */
+        #thumb-track {
+            flex: 1 1 auto;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 4px 0;
+            height: 80px;
+        }
+        
+        .thumb-item {
+            flex: 0 0 80px;
+            height: 80px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            overflow: hidden;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+        .thumb-item img { width: 100%; height: 100%; object-fit: cover; object-position: center 40%; }
+        .thumb-item.active { border-color: #3498db; box-shadow: 0 0 12px rgba(52, 152, 219, 0.6); }
+        .thumb-item:hover { transform: scale(1.08); border-color: rgba(52, 152, 219, 0.7); }
+
+        /* --- CONTROL BUTTONS --- */
+        .control-btn {
+            flex: 0 0 auto;
+            height: 44px;
+            min-width: 44px;
+            padding: 0 12px;
+            border: none;
+            background: transparent;
+            color: #f2f2f2;
+            font-size: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border-radius: 8px;
+            transition: transform 0.12s ease, color 0.12s ease, background 0.12s ease;
+            cursor: pointer;
+        }
+        .control-btn:hover { color: #67b6ff; transform: translateY(-1px); background: rgba(255,255,255,0.06); }
+        .control-btn:active { transform: translateY(0); }
+        .control-btn svg { width: 18px; height: 18px; fill: currentColor; }
+        .strip-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+        /* Pulsante rotazione minimal */
+        #rotation-toggle {
+            border: none;
+            background: transparent;
+            color: #f2f2f2;
+            font-size: 18px;
+            padding: 0 10px;
+            min-width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            transition: color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+            cursor: pointer;
+        }
+        #rotation-toggle:hover { color: #67b6ff; background: rgba(255,255,255,0.06); transform: translateY(-1px); }
+        #rotation-toggle.locked { color: #e67e22; }
+
         /* --- GALLERY CONTROLS --- */
         #controls-wrapper {
-            position: absolute; bottom: 0; width: 100%; z-index: 1001;
-            background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
-            transition: transform 0.18s ease;
+            display: none;
         }
-        #controls-wrapper.collapsed { transform: translateY(calc(100% - 40px)); }
-        #controls-toggle {
-            width: calc(100% - 160px); background: transparent; color: #aaa; border: none;
-            padding: 10px; cursor: pointer; font-size: 11px; letter-spacing: 1px; display: inline-block; vertical-align: middle;
-        }
-        #rotation-toggle {
-            display: inline-flex; align-items: center; justify-content: center;
-            vertical-align: middle; margin-left: 10px;
-            width: 42px; height: 36px; padding: 6px; border-radius: 8px;
-            border: 2px solid rgba(255,255,255,0.08);
-            background: transparent; color: #fff; cursor: pointer; font-size: 18px; line-height: 1;
-        }
-        /* stato locked: mantenere sfondo trasparente, evidenzia con bordo e colore icona */
-        #rotation-toggle.locked { background: transparent; border-color: var(--accent); color: var(--accent); }
         #controls { display: flex; gap: 10px; padding: 15px; justify-content: center; overflow-x: auto; }
         .scene-btn {
             width: 80px; border-radius: 6px; border: 2px solid transparent;
@@ -195,7 +325,7 @@
         .nav-arrow.right { right: 15px; }
 
         /* Cursore a mano su tutti gli elementi cliccabili del progetto */
-        button, .map-btn, .hover-toggle, .scene-btn, .nav-arrow, .hotspot-info, .layer-item, #layer-toggle, #map-hover-toggle, #gallery-hover-toggle {
+        button, .map-btn, .hover-toggle, .scene-btn, .nav-arrow, .hotspot-info, .layer-item, #layer-toggle, #map-hover-toggle, #gallery-hover-toggle, .control-btn, #bar-toggle {
             cursor: pointer;
         }
         /* Leaflet interactive shapes (marker, polylines, etc.) devono mostrare il puntatore */
@@ -244,12 +374,9 @@
         </span>
     </button>
     <button id="gallery-hover-toggle" class="hover-toggle" onclick="toggleControls()" title="Espandi/Contrai galleria viste" aria-label="Espandi o comprimi la galleria viste">⇳</button>
-    <button id="rotation-toggle" onclick="toggleRotation(event)" title="Blocca rotazione" aria-label="Blocca rotazione">🔄</button>
     <div id="controls"></div>
 </div>
 
-<button class="nav-arrow left" onclick="navigateScene(-1)">❮</button>
-<button class="nav-arrow right" onclick="navigateScene(1)">❯</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
@@ -457,6 +584,14 @@ async function init() {
         btn.innerHTML = `<img src="${thumbSrc}"><div class="btn-label">Punto ${index+1}</div>`;
         btn.onclick = () => switchScene(index);
         document.getElementById('controls').appendChild(btn);
+        
+        // Aggiungi thumbnail alla strip in basso
+        var thumb = document.createElement('div');
+        thumb.className = 'thumb-item';
+        thumb.innerHTML = `<img src="${thumbSrc}" alt="Punto ${index+1}">`;
+        thumb.onclick = () => switchScene(index);
+        var track = document.getElementById('thumb-track');
+        if (track) track.appendChild(thumb);
     });
     
     // Se abbiamo coordinate reali facciamo fitBounds, altrimenti centriamo su (0,0)
@@ -501,7 +636,8 @@ async function init() {
 
     // Carica solo la prima scena inizialmente per velocizzare
     switchScene(0);
-    // Aggiorna la visualizzazione del pulsante di rotazione (nascondilo se la rotazione è attiva)
+    // Autorotazione attiva di default
+    startAutoRotation();
     updateRotationButton();
     
     // Nascondi loader rapidamente dopo che la prima scena è pronta
@@ -543,6 +679,14 @@ function preloadScenes() {
 function switchScene(index) {
     var data = scenes[index];
     data.scene.switchTo({ transitionDuration: 500 });
+    // Ripristina yaw/pitch/fov alla vista iniziale ogni volta che si entra nella scena
+    try {
+        var initial = (window.data && window.data.scenes && window.data.scenes[index]) ? window.data.scenes[index].initialViewParameters : null;
+        if (initial) {
+            data.view.setParameters(initial, { transitionDuration: 0 });
+        }
+    } catch (e) { /* non critico */ }
+
     currentView = data.view;
     currentSceneIndex = index;
     
@@ -563,7 +707,7 @@ function switchScene(index) {
             sceneData.infoHotspots.forEach((hs, i) => {
                 var el = document.createElement('div');
                 el.className = 'hotspot-info';
-                el.innerHTML = '<span class="hotspot-plus">+</span>';
+                el.innerHTML = '<span class="hotspot-plus">i</span>';
                 el.onclick = (e) => { e.stopPropagation(); showInfoHotspot(hs.title, hs.text, hs.image || null); };
                 container.createHotspot(el, { yaw: hs.yaw, pitch: hs.pitch });
             });
@@ -573,16 +717,15 @@ function switchScene(index) {
         }
     }
 
-    // Avvia autorotazione solo se precaching completato (per migliori performance)
-    if (!rotationLocked && preloadingComplete) {
-        viewer.startMovement(autorotate);
-        viewer.setIdleMovement(3000, autorotate);
+    // Avvia autorotazione solo se consentita
+    if (!rotationLocked) {
+        startAutoRotation();
     } else {
-        viewer.stopMovement();
-        try { viewer.setIdleMovement(false); } catch(e) { /* ignore if API differs */ }
+        stopAutoRotation();
     }
 
     document.querySelectorAll('.scene-btn').forEach((b, i) => b.classList.toggle('active', i === index));
+    document.querySelectorAll('.thumb-item').forEach((t, i) => t.classList.toggle('active', i === index));
 }
 
 function navigateScene(dir) {
@@ -723,32 +866,30 @@ document.addEventListener('touchstart', function(e) { hideLayerMenu(); });
 function updateRotationButton() {
     var btn = document.getElementById('rotation-toggle');
     if (!btn) return;
+    // Il pulsante resta sempre visibile, cambia solo stato/iconografia
+    btn.style.display = 'inline-flex';
     if (rotationLocked) {
-        // mostra il pulsante come 'sblocca' quando la rotazione è ferma
-        btn.style.display = 'inline-flex';
         btn.classList.add('locked');
-        btn.innerHTML = '🔄';
-        btn.title = 'Riprendi rotazione';
-        btn.setAttribute('aria-label', 'Riprendi rotazione');
+        btn.innerHTML = '▶';
+        btn.title = 'Blocca/Sblocca rotazione';
+        btn.setAttribute('aria-label', 'Blocca/Sblocca rotazione');
     } else {
-        // nascondi il pulsante quando la rotazione è attiva
-        btn.style.display = 'none';
         btn.classList.remove('locked');
-        btn.innerHTML = '🔄';
-        btn.title = 'Blocca rotazione';
-        btn.setAttribute('aria-label', 'Blocca rotazione');
+        btn.innerHTML = '⏸';
+        btn.title = 'Blocca/Sblocca rotazione';
+        btn.setAttribute('aria-label', 'Blocca/Sblocca rotazione');
     }
 }
 
 function stopAutoRotation() {
     try { viewer.stopMovement(); } catch(e) {}
-    try { viewer.setIdleMovement(false); } catch(e) {}
+    // Impedisci riavvio automatico della rotazione
+    try { viewer.setIdleMovement(Infinity); } catch(e) { try { viewer.setIdleMovement(false); } catch(_) {} }
     // Forza l'azzeramento di qualsiasi movimento impostando la view
     try {
         if (currentView && typeof currentView.yaw === 'function') {
             var _y = currentView.yaw();
             var _p = currentView.pitch();
-            // Re-imposta gli angoli correnti per rimuovere eventuale inerzia
             if (typeof currentView.setYaw === 'function') currentView.setYaw(_y);
             if (typeof currentView.setPitch === 'function') currentView.setPitch(_p);
         }
@@ -756,7 +897,13 @@ function stopAutoRotation() {
 }
 
 function startAutoRotation() {
-    try { viewer.startMovement(autorotate); viewer.setIdleMovement(3000, autorotate); } catch(e) {}
+    try {
+        viewer.startMovement(autorotate);
+        viewer.setIdleMovement(3000, autorotate);
+    } catch(e) {}
+    rotationLocked = false;
+    rotationLockMode = null;
+    updateRotationButton();
 }
 
 function toggleRotation(e) {
@@ -765,7 +912,7 @@ function toggleRotation(e) {
 
     var btn = document.getElementById('rotation-toggle');
     if (!rotationLocked) {
-        // manual lock
+        // manual lock (pausa)
         rotationLocked = true;
         rotationLockMode = 'manual';
         stopAutoRotation();
@@ -786,7 +933,7 @@ function toggleRotation(e) {
         // cancel any temporary timer
         if (rotationTimer) { clearTimeout(rotationTimer); rotationTimer = null; }
     } else {
-        // unlock (whether manual or temporary)
+        // unlock (play)
         rotationLocked = false;
         rotationLockMode = null;
         // cancel timer if present
@@ -794,6 +941,21 @@ function toggleRotation(e) {
         startAutoRotation();
     }
     updateRotationButton();
+}
+
+function toggleFullscreen() {
+    try {
+        if (!document.fullscreenElement) {
+            var el = document.documentElement;
+            if (el.requestFullscreen) el.requestFullscreen();
+            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+            else if (el.msRequestFullscreen) el.msRequestFullscreen();
+        } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+    } catch(e) { /* non critico */ }
 }
 
 // Quando la rotazione è bloccata, assicuriamoci che qualsiasi click/touch non riattivi
@@ -925,6 +1087,51 @@ function hideInfoHotspot() {
     var m = document.getElementById('info-modal');
     if (m) m.style.display = 'none';
 }
+
+// --- TOGGLE BAR FUNCTION ---
+function toggleBar() {
+    var controlBar = document.getElementById('control-bar');
+    var barToggle = document.getElementById('bar-toggle');
+    
+    controlBar.classList.toggle('collapsed');
+    barToggle.classList.toggle('collapsed');
+    
+    // Cambia il simbolo: ▲ quando aperto, ▼ quando chiuso
+    if (barToggle.classList.contains('collapsed')) {
+        barToggle.textContent = '▼';
+        barToggle.title = 'Mostra barra';
+    } else {
+        barToggle.textContent = '▲';
+        barToggle.title = 'Nascondi barra';
+    }
+}
 </script>
+
+<!-- Control Bar (Due livelli: superiore con controlli, inferiore con thumbnails) -->
+<button id="bar-toggle" title="Mostra/Nascondi barra" aria-label="Mostra o nascondi la barra di controllo" onclick="toggleBar()">▲</button>
+
+<div id="control-bar">
+    <!-- TOP ROW (44px): Controlli -->
+    <div id="control-bar-top">
+        <div class="control-group">
+        </div>
+        <div class="control-group">
+            <button id="rotation-toggle" class="control-btn" onclick="toggleRotation(event)" title="Blocca/Sblocca rotazione" aria-label="Blocca/Sblocca rotazione">⏸</button>
+            <button id="fullscreen-toggle" class="control-btn" aria-label="Schermo intero" title="Schermo intero" onclick="toggleFullscreen()">⛶</button>
+        </div>
+    </div>
+    
+    <!-- BOTTOM ROW (88px): Thumbnails -->
+    <div id="control-bar-bottom">
+        <div class="control-group">
+            <button class="control-btn" aria-label="Vista precedente" title="Vista precedente" onclick="navigateScene(-1)">❮</button>
+        </div>
+        <div id="thumb-track"></div>
+        <div class="control-group">
+            <button class="control-btn" aria-label="Vista successiva" title="Vista successiva" onclick="navigateScene(1)">❯</button>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>

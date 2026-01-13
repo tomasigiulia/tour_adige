@@ -258,7 +258,11 @@
 
 <script>
 const panoramaFiles = ['panorama1.jpg', 'panorama2.jpg', 'panorama3.jpg'];
-const folder = './panorami/';
+// Determina il percorso base dinamicamente
+const baseURL = window.location.pathname.includes('/tour_adige/') 
+    ? '/tour_adige/panorami/' 
+    : './panorami/';
+const folder = baseURL;
 
 var viewer = new Marzipano.Viewer(document.getElementById('pano'));
 var scenes = [];

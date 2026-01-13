@@ -260,9 +260,9 @@
 const panoramaFiles = ['panorama1.jpg', 'panorama2.jpg', 'panorama3.jpg'];
 // Determina il percorso base dinamicamente
 const baseURL = window.location.pathname.includes('/tour_adige/') 
-    ? '/tour_adige/panorami/' 
-    : './panorami/';
-const folder = baseURL;
+    ? '/tour_adige/' 
+    : './';
+const folder = baseURL + 'panorami/';
 
 var viewer = new Marzipano.Viewer(document.getElementById('pano'));
 var scenes = [];
@@ -735,11 +735,15 @@ function showInfoHotspot(title, text, imageUrl) {
     }
     document.getElementById('info-title').innerText = title || '';
     document.getElementById('info-body').innerText = text || '';
-    // image handling
+    // image handling - applica il baseURL se il percorso è relativo
     var imgWrap = document.getElementById('info-image');
     var imgEl = document.getElementById('info-image-img');
     if (imageUrl) {
-        imgEl.src = imageUrl;
+        // Se il percorso non inizia con http/https e non è assoluto (/), prependi baseURL
+        var fullImageUrl = (imageUrl.startsWith('http') || imageUrl.startsWith('/')) 
+            ? imageUrl 
+            : baseURL + imageUrl;
+        imgEl.src = fullImageUrl;
         imgEl.alt = title || '';
         imgWrap.style.display = 'block';
     } else {

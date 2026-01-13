@@ -15,8 +15,8 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: #000; overflow: hidden; }
-        /* evita gesti di scrolling nativi sul pannello pano e aiuta le performance touch */
-        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+        /* Ottimizza touch per fluidità - touch-action: pan-x pan-y permette movimento fluido */
+        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: pan-x pan-y; }
 
         /* --- TITOLO --- */
         #title { 
@@ -31,7 +31,7 @@
             position: absolute; top: 20px; right: 20px;
             width: 320px; height: 260px; z-index: 1001;
             border-radius: 14px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-            transition: transform 0.22s ease, opacity 0.22s ease; border: 1px solid rgba(255,255,255,0.06);
+            transition: transform 0.15s ease, opacity 0.15s ease; border: 1px solid rgba(255,255,255,0.06);
             background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
         }
         #map-box.collapsed { width: 50px; height: 50px; border-radius: 50%; transform: scale(0.95); }
@@ -64,7 +64,7 @@
             position: absolute; bottom: 8px; right: 8px; z-index: 1004;
             width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);
             background: rgba(0,0,0,0.45); color: #fff; display: flex; align-items: center; justify-content: center;
-            opacity: 1; pointer-events: auto; transition: opacity 0.15s ease, transform 0.15s ease;
+            opacity: 1; pointer-events: auto; transition: opacity 0.1s ease, transform 0.1s ease;
         }
         #map-box:hover .hover-toggle { transform: translateY(0); }
         #controls-wrapper:hover .hover-toggle { transform: translateY(0); }
@@ -114,7 +114,7 @@
             background: rgba(0,0,0,0.45); color: #fff; cursor: pointer;
             font-size: 16px; font-weight: 700;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            transition: transform 0.12s ease, background 0.12s;
+            transition: transform 0.08s ease, background 0.08s ease;
             display: inline-flex; align-items: center; justify-content: center;
         }
         .map-btn:hover { background: rgba(255,255,255,0.06); transform: translateY(-2px); }
@@ -147,7 +147,7 @@
             position: absolute;
             margin-top: -17px; 
             margin-left: -17px;
-            transition: transform 0.12s ease, box-shadow 0.12s;
+            transition: transform 0.08s ease, box-shadow 0.08s ease;
             box-shadow: 0 6px 18px rgba(11,61,145,0.24);
         }
         .hotspot-info:hover { transform: scale(1.08); box-shadow: 0 10px 22px rgba(11,61,145,0.28); }
@@ -160,7 +160,7 @@
         #controls-wrapper {
             position: absolute; bottom: 0; width: 100%; z-index: 1001;
             background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
-            transition: transform 0.3s;
+            transition: transform 0.18s ease;
         }
         #controls-wrapper.collapsed { transform: translateY(calc(100% - 40px)); }
         #controls-toggle {
@@ -268,7 +268,8 @@ var viewer = new Marzipano.Viewer(document.getElementById('pano'));
 var scenes = [];
 var markers = [];
 var map, currentView, currentSceneIndex = 0;
-var autorotate = Marzipano.autorotate({ yawSpeed: 0.03, targetPitch: 0 });
+var autorotate = Marzipano.autorotate({ yawSpeed: 0.02, targetPitch: 0 });
+var preloadingComplete = false;
 var baseLayer, satelliteLayer, cartoLayer, layers = [], currentLayerIndex = 0;
 var rotationLocked = false;
 var rotationTimer = null; // timer per riabilitare la rotazione dopo X ms
@@ -299,7 +300,11 @@ function getGpsData(url) {
 }
 
 async function init() {
+    // Mostra loader
+    showLoader('Caricamento tour in corso...');
+    
     // Leggi i dati GPS in parallelo (più veloce rispetto al caricamento sequenziale)
+    // Usa immagini più piccole per lettura GPS (più veloce)
     let locations = [];
     try {
         var gpsPromises = panoramaFiles.map(file => getGpsData(folder + file).then(coords => ({ coords, file })).catch(err => ({ coords: null, file })));
@@ -346,10 +351,17 @@ async function init() {
 
     locations.forEach((data, index) => {
         var source = Marzipano.ImageUrlSource.fromString(folder + data.file);
-        var geometry = new Marzipano.EquirectGeometry([{ width: 4000 }]);
-        var limiter = Marzipano.RectilinearView.limit.traditional(4000, 100*Math.PI/180);
+        // Geometria multi-livello: zoom massimo aumentato per sfruttare la risoluzione nativa
+        var geometry = new Marzipano.EquirectGeometry([{ width: 1000 }, { width: 2000 }, { width: 4000 }, { width: 8000 }]);
+        var limiter = Marzipano.RectilinearView.limit.traditional(8000, 100*Math.PI/180);
         var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: Math.PI/2 }, limiter);
-        var scene = viewer.createScene({ source: source, geometry: geometry, view: view });
+        // pinFirstLevel mantiene in cache il primo livello per evitare ricaricamenti
+        var scene = viewer.createScene({ 
+            source: source, 
+            geometry: geometry, 
+            view: view,
+            pinFirstLevel: true  // Mantiene in cache per evitare ricaricamenti
+        });
         
         scenes.push({ scene, view, lat: data.lat, lng: data.lng, hotspotsCreated: false });
 
@@ -394,14 +406,50 @@ async function init() {
         } catch(e) {}
     });
 
+    // Carica solo la prima scena inizialmente per velocizzare
     switchScene(0);
     // Aggiorna la visualizzazione del pulsante di rotazione (nascondilo se la rotazione è attiva)
     updateRotationButton();
+    
+    // Nascondi loader rapidamente dopo che la prima scena è pronta
+    setTimeout(() => hideLoader(), 400);
+    
+    // Precarica aggressivamente le altre scene in background dopo 800ms
+    setTimeout(() => preloadScenes(), 800);
+}
+
+// Precarica tutte le scene in background con caricamento aggressivo delle texture
+function preloadScenes() {
+    scenes.forEach((sceneData, index) => {
+        if (index !== currentSceneIndex) {
+            // Forza il caricamento aggressivo della scena e delle sue texture
+            sceneData.scene.lookTo({ yaw: 0, pitch: 0 }, { transitionDuration: 0 });
+            // Forza anche altri angoli per precaricare più tile
+            setTimeout(() => {
+                sceneData.scene.lookTo({ yaw: Math.PI/2, pitch: 0 }, { transitionDuration: 0 });
+                sceneData.scene.lookTo({ yaw: Math.PI, pitch: 0 }, { transitionDuration: 0 });
+                sceneData.scene.lookTo({ yaw: -Math.PI/2, pitch: 0 }, { transitionDuration: 0 });
+                // Segnala completamento dopo l'ultima scena
+                if (index === scenes.length - 1) {
+                    setTimeout(() => {
+                        preloadingComplete = true;
+                        // Avvia autorotazione solo se non bloccata
+                        if (!rotationLocked && currentView) {
+                            viewer.startMovement(autorotate);
+                            viewer.setIdleMovement(3000, autorotate);
+                        }
+                        console.log('✓ Precaching completato, autorotazione ottimizzata avviata');
+                    }, 500);
+                }
+            }, index * 100);
+        }
+    });
+    console.log('✓ Avvio precaching scene...');
 }
 
 function switchScene(index) {
     var data = scenes[index];
-    data.scene.switchTo({ transitionDuration: 1000 });
+    data.scene.switchTo({ transitionDuration: 500 });
     currentView = data.view;
     currentSceneIndex = index;
     
@@ -432,7 +480,8 @@ function switchScene(index) {
         }
     }
 
-    if (!rotationLocked) {
+    // Avvia autorotazione solo se precaching completato (per migliori performance)
+    if (!rotationLocked && preloadingComplete) {
         viewer.startMovement(autorotate);
         viewer.setIdleMovement(3000, autorotate);
     } else {
@@ -450,7 +499,7 @@ function navigateScene(dir) {
 
 function toggleMap() {
     document.getElementById('map-box').classList.toggle('collapsed');
-    setTimeout(() => map.invalidateSize(), 400);
+    setTimeout(() => map.invalidateSize(), 200);
 }
 
 function toggleControls() {
@@ -463,8 +512,8 @@ function toggleControls() {
     if (!cw) return;
     var enterTimer = null;
     var leaveTimer = null;
-    var enterDelay = 120; // ms
-    var leaveDelay = 300; // ms
+    var enterDelay = 80; // ms - ridotto per maggiore reattività
+    var leaveDelay = 200; // ms - ridotto per maggiore reattività
 
     cw.addEventListener('mouseenter', function() {
         if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
@@ -674,15 +723,41 @@ function enforceRotationLockOnInteraction(e) {
                 updateRotationButton();
             }
             rotationTimer = null;
-        }, 1 * 60 * 1000);
+        }, 30 * 1000); // Ridotto a 30s per maggiore reattività
     }
     updateRotationButton();
 }
 
 // Listener in capturing phase per intercettare prima degli handler UI
 document.addEventListener('click', enforceRotationLockOnInteraction, true);
-document.addEventListener('touchend', enforceRotationLockOnInteraction, true);
+// Touch listener con passive: true per migliori performance e evitare blocchi
+document.addEventListener('touchend', enforceRotationLockOnInteraction, { capture: true, passive: true });
 document.addEventListener('mousedown', enforceRotationLockOnInteraction, true);
+
+// --- LOADER ---
+function showLoader(message) {
+    var loader = document.createElement('div');
+    loader.id = 'tour-loader';
+    loader.innerHTML = `
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">
+            <div style="width:60px;height:60px;border:4px solid rgba(255,255,255,0.2);border-top-color:#3498db;border-radius:50%;animation:spin 1s linear infinite"></div>
+            <div style="color:#fff;font-size:16px;font-weight:500">${message}</div>
+        </div>
+    `;
+    var style = document.createElement('style');
+    style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+    document.head.appendChild(style);
+    document.body.appendChild(loader);
+}
+
+function hideLoader() {
+    var loader = document.getElementById('tour-loader');
+    if (loader) {
+        loader.style.opacity = '0';
+        loader.style.transition = 'opacity 0.2s ease';
+        setTimeout(() => loader.remove(), 200);
+    }
+}
 
 init();
 

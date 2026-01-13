@@ -683,55 +683,50 @@ async function init() {
     // Mostra loader
     showLoader(getTranslation('loading'));
     
-    // Leggi i dati GPS in parallelo (più veloce rispetto al caricamento sequenziale)
-    // Usa immagini più piccole per lettura GPS (più veloce)
     let locations = [];
     let locationsFallback = false;
     
-    console.log('=== CARICAMENTO COORDINATE DA GPS EXIF ===');
+    console.log('=== CARICAMENTO COORDINATE ===');
     
-    // PRIORITÀ 1: Leggi direttamente dal GPS EXIF delle immagini JPG originali
-    try {
-        console.log('Tentativo lettura GPS da immagini originali...');
-        var gpsPromises = panoramaFilesForGps.map((file, idx) => 
-            getGpsData(folder + file)
-                .then(coords => ({ coords, file: panoramaFiles[idx] }))
-                .catch(err => { console.warn('Errore GPS per ' + file, err); return { coords: null, file: null }; })
-        );
-        var gpsResults = await Promise.all(gpsPromises);
-        locations = gpsResults
-            .filter(r => r.coords && r.file)
-            .map(r => ({ ...r.coords, file: r.file }));
-        if (locations.length > 0) {
-            console.log('✓ GPS letto da immagini (PRIORITÀ 2): ' + locations.length + ' coordinate trovate');
-        }
-    } catch (e) {
-        console.warn('Errore lettura GPS in parallelo:', e);
-        // PRIORITÀ 2: Riprova sequenzialmente
-        for (let i = 0; i < panoramaFilesForGps.length; i++) {
-            try {
-                let coords = await getGpsData(folder + panoramaFilesForGps[i]);
-                if (coords) {
-                    locations.push({ ...coords, file: panoramaFiles[i] });
-                }
-            } catch (err) { 
-                console.warn('Errore GPS sequenziale per ' + panoramaFilesForGps[i], err);
-            }
-        }
-        if (locations.length > 0) {
-            console.log('✓ GPS letto sequenzialmente (PRIORITÀ 2): ' + locations.length + ' coordinate trovate');
-        }
-    }
-    
-    // PRIORITÀ 3: Se ancora nessuna coordinata, usa fallback simbolico
-    if (!locations.length) {
-        locationsFallback = true;
-        locations = panoramaFiles.map((file, idx) => ({
-            lat: 0.0001 * idx,
-            lng: 0.0001 * idx,
-            file
+    // PRIORITÀ 1: Leggi coordinate da data.js (HARDCODED - più veloce)
+    if (window.data && window.data.coordinates && window.data.coordinates.length > 0) {
+        console.log('✓ Coordinate caricate da data.js: ' + window.data.coordinates.length + ' trovate');
+        locations = window.data.coordinates.map((coord, idx) => ({
+            lat: coord.lat,
+            lng: coord.lng,
+            file: panoramaFiles[idx]
         }));
-        console.warn('Nessun GPS trovato: uso fallback simbolico');
+    } 
+    // PRIORITÀ 2: Se no coordinates in data.js, leggi dal GPS EXIF delle immagini
+    else {
+        console.log('Tentativo lettura GPS da EXIF (fallback)...');
+        try {
+            var gpsPromises = panoramaFilesForGps.map((file, idx) => 
+                getGpsData(folder + file)
+                    .then(coords => ({ coords, file: panoramaFiles[idx] }))
+                    .catch(err => { console.warn('Errore GPS per ' + file, err); return { coords: null, file: null }; })
+            );
+            var gpsResults = await Promise.all(gpsPromises);
+            locations = gpsResults
+                .filter(r => r.coords && r.file)
+                .map(r => ({ ...r.coords, file: r.file }));
+            if (locations.length > 0) {
+                console.log('✓ GPS letto da immagini (EXIF): ' + locations.length + ' coordinate trovate');
+            }
+        } catch (e) {
+            console.warn('Errore lettura GPS in parallelo:', e);
+        }
+        
+        // PRIORITÀ 3: Se ancora nessuna coordinata, usa fallback simbolico
+        if (!locations.length) {
+            locationsFallback = true;
+            locations = panoramaFiles.map((file, idx) => ({
+                lat: 0.0001 * idx,
+                lng: 0.0001 * idx,
+                file
+            }));
+            console.warn('Nessun GPS trovato: uso fallback simbolico');
+        }
     }
 
     map = L.map('mapContainer', { zoomControl: false, attributionControl: false });

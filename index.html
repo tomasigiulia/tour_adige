@@ -765,13 +765,14 @@ async function init() {
 
     locations.forEach((data, index) => {
         // Configurazione tiles multi-risoluzione (come krpano)
-        var levels = [
+        // Per avvio rapido carichiamo solo i livelli 0-3 (fino a 2048px) e abilitiamo 4096 on-demand
+        var levelsBase = [
             { tileSize: 256, size: 256, fallbackOnly: true },  // Level 0: preview veloce
             { tileSize: 512, size: 512 },                      // Level 1
             { tileSize: 512, size: 1024 },                     // Level 2
-            { tileSize: 512, size: 2048 },                     // Level 3
-            { tileSize: 512, size: 4096 }                      // Level 4: massima risoluzione
+            { tileSize: 512, size: 2048 }                      // Level 3
         ];
+        var levelsHiRes = levelsBase.concat([{ tileSize: 512, size: 4096 }]); // Level 4 solo dopo interazione
         
         // Se il file ha estensione .tiles usa CubeGeometry (tiles ottimizzati)
         // altrimenti usa EquirectGeometry (immagine singola) come fallback
@@ -785,8 +786,8 @@ async function init() {
                 urlPrefix + "/{f}/{z}/{y}/{x}.jpg",
                 { cubeMapPreviewUrl: urlPrefix + "/preview.jpg" }
             );
-            // CubeGeometry: 6 facce (f/b/l/r/u/d) con 5 livelli di dettaglio (0-4)
-            geometry = new Marzipano.CubeGeometry(levels);
+            // CubeGeometry: 6 facce (f/b/l/r/u/d) con livelli 0-3 iniziali; 4 verrà caricato on-demand
+            geometry = new Marzipano.CubeGeometry(levelsBase);
         } else {
             // Fallback: immagine equirettangolare singola con multi-risoluzione
             source = Marzipano.ImageUrlSource.fromString(folder + data.file);
@@ -810,7 +811,18 @@ async function init() {
         // Conserva l'id di scena per collegare le didascalie
         var sceneMeta = (window.data && window.data.scenes && window.data.scenes[index]) ? window.data.scenes[index] : null;
         var sceneId = sceneMeta ? sceneMeta.id : null;
-        scenes.push({ scene, view, lat: data.lat, lng: data.lng, id: sceneId, hotspotsCreated: false });
+        scenes.push({
+            scene,
+            view,
+            lat: data.lat,
+            lng: data.lng,
+            id: sceneId,
+            hotspotsCreated: false,
+            source,
+            isTiled,
+            levelsHiRes,
+            hiResEnabled: false
+        });
 
         var marker = L.circleMarker([data.lat, data.lng], { radius: 7, fillColor: "#3498db", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map);
         marker.on('click', () => switchScene(index));
@@ -820,14 +832,14 @@ async function init() {
         btn.className = 'scene-btn';
         // Usa preview.jpg per tiles, immagine originale per .jpg
         var thumbSrc = isTiled ? folder + data.file + '/preview.jpg' : folder + data.file;
-        btn.innerHTML = `<img src="${thumbSrc}"><div class="btn-label">Punto ${index+1}</div>`;
+        btn.innerHTML = `<img src="${thumbSrc}" loading="lazy"><div class="btn-label">Punto ${index+1}</div>`;
         btn.onclick = () => switchScene(index);
         document.getElementById('controls').appendChild(btn);
         
         // Aggiungi thumbnail alla strip in basso
         var thumb = document.createElement('div');
         thumb.className = 'thumb-item';
-        thumb.innerHTML = `<img src="${thumbSrc}" alt="Punto ${index+1}">`;
+        thumb.innerHTML = `<img src="${thumbSrc}" alt="Punto ${index+1}" loading="lazy">`;
         thumb.onclick = () => switchScene(index);
         var track = document.getElementById('thumb-track');
         if (track) track.appendChild(thumb);
@@ -842,8 +854,6 @@ async function init() {
         const layerName = document.getElementById('map-layer-name');
         if (layerName) layerName.innerText = 'OSM (no GPS)';
     }
-
-    map.fitBounds(L.latLngBounds(locations.map(l => [l.lat, l.lng])), {padding: [30,30]});
 
     // --- LOGICA COORDINATE PER F12 ---
     // Cattura le coordinate yaw/pitch del punto cliccato (non del centro della view)
@@ -891,31 +901,8 @@ async function init() {
 
 // Precarica tutte le scene in background con caricamento aggressivo delle texture
 function preloadScenes() {
-    scenes.forEach((sceneData, index) => {
-        if (index !== currentSceneIndex) {
-            // Forza il caricamento aggressivo della scena e delle sue texture
-            sceneData.scene.lookTo({ yaw: 0, pitch: 0 }, { transitionDuration: 0 });
-            // Forza anche altri angoli per precaricare più tile
-            setTimeout(() => {
-                sceneData.scene.lookTo({ yaw: Math.PI/2, pitch: 0 }, { transitionDuration: 0 });
-                sceneData.scene.lookTo({ yaw: Math.PI, pitch: 0 }, { transitionDuration: 0 });
-                sceneData.scene.lookTo({ yaw: -Math.PI/2, pitch: 0 }, { transitionDuration: 0 });
-                // Segnala completamento dopo l'ultima scena
-                if (index === scenes.length - 1) {
-                    setTimeout(() => {
-                        preloadingComplete = true;
-                        // Avvia autorotazione solo se non bloccata
-                        if (!rotationLocked && currentView) {
-                            viewer.startMovement(autorotate);
-                            viewer.setIdleMovement(3000, autorotate);
-                        }
-                        console.log('✓ Precaching completato, autorotazione ottimizzata avviata');
-                    }, 500);
-                }
-            }, index * 100);
-        }
-    });
-    console.log('✓ Avvio precaching scene...');
+    // Precaricamento aggressivo disattivato per ridurre latenza iniziale
+    console.log('ℹ️ Precaching disattivato (aggressivo off)');
 }
 
 function switchScene(index) {
@@ -969,6 +956,64 @@ function switchScene(index) {
     document.querySelectorAll('.scene-btn').forEach((b, i) => b.classList.toggle('active', i === index));
     document.querySelectorAll('.thumb-item').forEach((t, i) => t.classList.toggle('active', i === index));
     refreshSceneCaption(index);
+    scheduleHiResUpgrade();
+}
+
+// Abilita il livello 4096 solo dopo la prima interazione dell'utente (riduce richieste iniziali)
+function scheduleHiResUpgrade() {
+    var data = scenes[currentSceneIndex];
+    if (!data || data.hiResEnabled || !data.isTiled) return;
+    var panoEl = document.getElementById('pano');
+    if (!panoEl) return;
+
+    var handler = function() {
+        upgradeSceneToHiRes(currentSceneIndex);
+    };
+    // Usa once per evitare listener multipli
+    panoEl.addEventListener('mousedown', handler, { once: true });
+    panoEl.addEventListener('touchstart', handler, { once: true, passive: true });
+}
+
+function upgradeSceneToHiRes(index) {
+    var data = scenes[index];
+    if (!data || data.hiResEnabled || !data.isTiled) return;
+    try {
+        var limiter = Marzipano.RectilinearView.limit.traditional(8000, 100*Math.PI/180);
+        var currentParams = data.view && typeof data.view.yaw === 'function' ? {
+            yaw: data.view.yaw(),
+            pitch: data.view.pitch(),
+            fov: data.view.fov()
+        } : { yaw: 0, pitch: 0, fov: Math.PI/2 };
+
+        var newView = new Marzipano.RectilinearView(currentParams, limiter);
+        var newGeometry = new Marzipano.CubeGeometry(data.levelsHiRes || []);
+        var newScene = viewer.createScene({
+            source: data.source,
+            geometry: newGeometry,
+            view: newView,
+            pinFirstLevel: true,
+            textureStoreOpts: {
+                previouslyVisibleCacheSize: 256 * 1024 * 1024
+            }
+        });
+
+        var wasActive = currentSceneIndex === index;
+        var oldScene = data.scene;
+
+        scenes[index].scene = newScene;
+        scenes[index].view = newView;
+        scenes[index].hiResEnabled = true;
+
+        if (wasActive) {
+            newScene.switchTo({ transitionDuration: 0 });
+            // Ricrea hotspot e stato attivo
+            try { switchScene(index); } catch(e) {}
+        }
+        if (oldScene && oldScene.destroy) oldScene.destroy();
+        console.log('✓ Livello 4096 abilitato per scena', index + 1);
+    } catch (e) {
+        console.warn('upgradeSceneToHiRes fallito', e);
+    }
 }
 
 function navigateScene(dir) {

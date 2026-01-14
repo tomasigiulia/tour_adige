@@ -23,9 +23,9 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #000; overflow: hidden; height: 100vh; }
-        /* Ottimizza touch - touch-action: auto permette al viewer di gestire i tocchi (zoom pinch incluso) */
-        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: auto; transition: opacity 0.8s ease; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #000; overflow: hidden; height: 100vh; touch-action: manipulation; }
+        /* Ottimizza touch per mobile - touch-action: manipulation permette pinch-to-zoom di Marzipano */
+        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: manipulation; transition: opacity 0.8s ease; }
         #pano.fade-in { animation: panoFade 0.8s ease; }
         @keyframes panoFade { from { opacity: 0.45; } to { opacity: 1; } }
 
@@ -1191,7 +1191,14 @@ async function init() {
     }
 
     // Inizializza mappa ma non caricare i tiles subito (lazy load)
-    map = L.map('mapContainer', { zoomControl: false, attributionControl: false, preferCanvas: true });
+    map = L.map('mapContainer', { 
+        zoomControl: false, 
+        attributionControl: false, 
+        preferCanvas: true,
+        touchZoom: true,
+        doubleClickZoom: true,
+        scrollWheelZoom: false
+    });
     
     // Layer base (OpenStreetMap) - default più familiare e professionale
     baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1226,20 +1233,11 @@ async function init() {
     // costruisci il menu dei layer
     buildLayerMenu();
     
-    // Impedisce che i tocchi sulla mappa muovano il panorama 360
+    // Impedisce che i tocchi sulla mappa muovano il panorama 360 - blocco SELETTIVO
     var mapEl = document.getElementById('map-box');
-    mapEl.addEventListener('touchstart', function(e) { e.stopPropagation(); }, {passive: true});
-    mapEl.addEventListener('touchmove', function(e) { e.stopPropagation(); }, {passive: true});
+    mapEl.addEventListener('touchstart', function(e) { e.stopPropagation(); }, {passive: false});
+    mapEl.addEventListener('touchmove', function(e) { e.stopPropagation(); }, {passive: false});
     mapEl.addEventListener('mousedown', function(e) { e.stopPropagation(); });
-    
-    // Disabilita il trascinamento della mappa su mobile per permettere lo scroll della pagina
-    if (window.innerWidth < 768) {
-        map.dragging.disable();
-        // Riabilita il drag solo dopo un primo tocco per evitare movimenti accidentali
-        mapEl.addEventListener('click', function() {
-            map.dragging.enable();
-        }, { once: true });
-    }
 
     locations.forEach((data, index) => {
         // 4 livelli corrispondenti alle cartelle 1,2,3,4 (z Marzipano 0,1,2,3)
@@ -1282,8 +1280,9 @@ async function init() {
             geometry = new Marzipano.EquirectGeometry([{ width: 1000 }, { width: 2000 }, { width: 4000 }, { width: 8000 }]);
         }
         
-        // Limiter ottimizzato per mobile: risoluzione ridotta e FOV range più stretto per evitare distorsioni
-        var limiter = Marzipano.RectilinearView.limit.traditional(4096, 45*Math.PI/180, 120*Math.PI/180);
+        // Limiter ottimizzato per mobile: FOV più ampio su mobile per zoom percepibile
+        var isMobile = window.innerWidth < 768;
+        var limiter = Marzipano.RectilinearView.limit.traditional(4096, isMobile ? 30*Math.PI/180 : 45*Math.PI/180, 120*Math.PI/180);
         var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: Math.PI/2 }, limiter);
         
         // Cache aumentata a 500MB per evitare che texture spariscano
@@ -1427,8 +1426,11 @@ async function init() {
         });
     }
     
-    // Attiva il controllo UI sui tocchi/click
-    document.addEventListener('touchstart', showUI);
+    // Attiva il controllo UI sui tocchi/click - ma SOLO dal panorama per non bloccare Marzipano
+    document.addEventListener('touchstart', function(e) {
+        if (!e.target.closest('#pano')) return; // Solo se il tocco è sul panorama
+        showUI();
+    }, { passive: true });
     document.addEventListener('mousedown', showUI);
     // Avvia il timer iniziale per nascondere UI dopo 5 secondi
     showUI();

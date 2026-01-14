@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <title>Tour 360 Pro</title>
+    <title>Tour 360 Pro - Valle dell'Adige</title>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <!-- Preconnect ai CDN per velocizzare il caricamento -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
@@ -22,10 +22,10 @@
             --thumb-count: 3;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: #000; overflow: hidden; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #000; overflow: hidden; height: 100vh; }
         /* Ottimizza touch - touch-action: auto permette al viewer di gestire i tocchi (zoom pinch incluso) */
-        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: auto; }
+        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: auto; transition: opacity 0.8s ease; }
         #pano.fade-in { animation: panoFade 0.8s ease; }
         @keyframes panoFade { from { opacity: 0.45; } to { opacity: 1; } }
 
@@ -321,7 +321,10 @@
             overflow-y: hidden;
             padding: 4px 0;
             height: var(--thumb-size);
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
         }
+        #thumb-track::-webkit-scrollbar { display: none; }
         
         .thumb-item {
             flex: 0 0 var(--thumb-size);
@@ -803,7 +806,8 @@
 <body>
 
 <div id="pano"></div>
-<div id="title-wrapper" style="position: absolute; top: 20px; left: 20px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
+
+<div id="title-wrapper" style="position: absolute; top: env(safe-area-inset-top, 20px); left: 20px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
   <div id="title" style="background: var(--bg-glass); color: white; padding: 12px 20px; border-radius: 10px; backdrop-filter: blur(10px); font-weight: bold;">VIRTUAL TOUR 360°</div>
   <button id="lang-toggle" style="background: var(--bg-glass); color: white; padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); font-size: 11px; cursor: pointer; transition: all 0.2s ease; z-index: 1001;" onclick="toggleLanguage()" title="Cambia lingua / Change language"><span class="lang-it active">IT</span> | <span class="lang-en">EN</span></button>
 </div>

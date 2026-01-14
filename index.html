@@ -24,8 +24,8 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: #000; overflow: hidden; }
-        /* Ottimizza touch per fluidità - touch-action: pan-x pan-y permette movimento fluido */
-        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: pan-x pan-y; }
+        /* Ottimizza touch per fluidità - touch-action: manipulation permette zoom pinch e movimento fluido */
+        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: manipulation; }
         #pano.fade-in { animation: panoFade 0.8s ease; }
         @keyframes panoFade { from { opacity: 0.45; } to { opacity: 1; } }
 
@@ -799,9 +799,9 @@
 <body>
 
 <div id="pano"></div>
-<div id="title-wrapper" style="position: absolute; top: 20px; left: 20px; z-index: 1001; display: flex; gap: 12px; align-items: center;">
+<div id="title-wrapper" style="position: absolute; top: 20px; left: 20px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
   <div id="title" style="background: var(--bg-glass); color: white; padding: 12px 20px; border-radius: 10px; backdrop-filter: blur(10px); font-weight: bold;">VIRTUAL TOUR 360°</div>
-  <button id="lang-toggle" style="background: var(--bg-glass); color: white; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); font-size: 12px; cursor: pointer; transition: all 0.2s ease; z-index: 1001;" onclick="toggleLanguage()" title="Cambia lingua / Change language"><span class="lang-it active">IT</span> | <span class="lang-en">EN</span></button>
+  <button id="lang-toggle" style="background: var(--bg-glass); color: white; padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); font-size: 11px; cursor: pointer; transition: all 0.2s ease; z-index: 1001;" onclick="toggleLanguage()" title="Cambia lingua / Change language"><span class="lang-it active">IT</span> | <span class="lang-en">EN</span></button>
 </div>
 
 <div id="map-box">
@@ -1731,17 +1731,31 @@ function toggleRotation(e) {
 
 function toggleFullscreen() {
     try {
-        if (!document.fullscreenElement) {
-            var el = document.documentElement;
-            if (el.requestFullscreen) el.requestFullscreen();
-            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-            else if (el.msRequestFullscreen) el.msRequestFullscreen();
+        var el = document.documentElement;
+        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+            // Prova tutti i metodi di fullscreen supportati
+            if (el.requestFullscreen) {
+                el.requestFullscreen().catch(err => console.log('Fullscreen err:', err));
+            } else if (el.webkitRequestFullscreen) {
+                el.webkitRequestFullscreen();
+            } else if (el.mozRequestFullScreen) {
+                el.mozRequestFullScreen();
+            } else if (el.msRequestFullscreen) {
+                el.msRequestFullscreen();
+            }
         } else {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-            else if (document.msExitFullscreen) document.msExitFullscreen();
+            // Esci da fullscreen
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(err => console.log('Exit fullscreen err:', err));
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
         }
-    } catch(e) { /* non critico */ }
+    } catch(e) { console.log('Fullscreen not available:', e); }
 }
 
 // Quando la rotazione è bloccata, assicuriamoci che qualsiasi click/touch non riattivi

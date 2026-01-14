@@ -47,7 +47,7 @@
 
   // Initialize viewer.
   var viewer = new Marzipano.Viewer(panoElement, viewerOpts);
-
+  viewer.controls().enableMethod('pinch');
   // Create scenes.
   var scenes = data.scenes.map(function(data) {
     var source = Marzipano.ImageUrlSource.fromString(

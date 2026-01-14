@@ -3,7 +3,7 @@
 <head>
     <title>Tour 360 Pro - Valle dell'Adige</title>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <!-- Preconnect ai CDN per velocizzare il caricamento -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
@@ -67,7 +67,9 @@
         /* --- MAP BOX --- */
         #map-box {
             position: absolute; top: 20px; right: 20px;
-            width: 320px; height: 260px; z-index: 1001;
+            width: 320px; height: 260px; 
+            min-width: 280px; min-height: 220px; /* Evita sovrapposizione tasti */
+            z-index: 1001;
             border-radius: 14px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.6);
             transition: transform 0.15s ease, opacity 0.15s ease; border: 1px solid rgba(255,255,255,0.2);
             background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
@@ -206,39 +208,46 @@
             position: absolute;
             bottom: 0;
             left: 50%;
-            transform: translate(-50%, 0);
+            transform: translateX(-50%);
             width: min(96vw, calc(var(--thumb-count) * (var(--thumb-size) + var(--thumb-gap)) + 260px));
             max-width: 1200px;
-            max-height: var(--bar-height);
+            height: var(--bar-height);
             background: rgba(0, 0, 0, 0.72);
             backdrop-filter: blur(14px);
             border-top: 1px solid rgba(255,255,255,0.15);
             z-index: 1001;
             display: flex;
             flex-direction: column;
-            overflow: visible;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            overflow: visible; /* Permette di vedere il toggle button fuori dal bordo */
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
             opacity: 1;
         }
         
         #control-bar.collapsed {
-            max-height: 0;
+            width: 0; /* Completamente nascosta */
             opacity: 0;
-            overflow: hidden;
-            border-top: none;
+            transform: translateX(-50%);
+            pointer-events: none; /* Non intercetta click */
+        }
+        
+        #control-bar.collapsed #control-bar-top,
+        #control-bar.collapsed #control-bar-bottom {
+            opacity: 0;
+            pointer-events: none;
         }
 
-        /* --- TOGGLE BUTTON --- */
+        /* --- TOGGLE BUTTON (espansione orizzontale) --- */
         #bar-toggle {
-            position: fixed;
-            bottom: var(--bar-height);
-            left: 50%;
-            transform: translateX(-50%);
-            width: 50px;
-            height: 28px;
-            background: linear-gradient(180deg, rgba(44, 62, 80, 0.95), rgba(20, 30, 40, 0.95));
-            border: none; /* Seamless con la barra */
-            border-radius: 0; /* Nessun bordo arrotondato - parte integrante della barra */
+            position: fixed; /* Fixed per essere sempre visibile */
+            bottom: calc(var(--bar-height) / 2); /* Centro verticale della barra */
+            left: calc(50% + min(48vw, calc((var(--thumb-count) * (var(--thumb-size) + var(--thumb-gap)) + 260px) / 2))); /* Destra della barra */
+            transform: translateY(50%);
+            width: 32px;
+            height: 80px;
+            background: linear-gradient(90deg, rgba(44, 62, 80, 0.92), rgba(20, 30, 40, 0.92));
+            border: 1px solid rgba(255,255,255,0.12);
+            border-left: none;
+            border-radius: 0 8px 8px 0; /* Arrotonda solo lato destro */
             color: #fff;
             cursor: pointer;
             display: flex;
@@ -246,16 +255,18 @@
             justify-content: center;
             font-size: 16px;
             transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1002;
+            z-index: 1003; /* Sopra la barra */
+            backdrop-filter: blur(10px);
         }
         
         #bar-toggle:hover {
-            background: linear-gradient(180deg, rgba(52, 152, 219, 0.9), rgba(30, 100, 180, 0.9));
+            background: linear-gradient(90deg, rgba(52, 152, 219, 0.9), rgba(30, 100, 180, 0.9));
+            border-color: rgba(52, 152, 219, 0.5);
         }
         
         #bar-toggle.collapsed {
-            transform: translateX(-50%);
-            bottom: 0;
+            left: 50%; /* Centro schermo quando barra nascosta */
+            transform: translateX(-50%) translateY(50%); /* Centra la linguetta */
         }
 
         /* --- TOP ROW (44px) --- */
@@ -501,7 +512,7 @@
                 --thumb-size: 64px; 
                 --thumb-gap: 6px; 
             }
-            #bar-toggle { bottom: var(--bar-height); width: 45px; height: 26px; font-size: 14px; }
+            #bar-toggle { width: 30px; height: 70px; font-size: 14px; right: -30px; }
             
             .control-btn {
                 height: 36px;
@@ -524,7 +535,7 @@
                 --thumb-size: 58px; 
                 --thumb-gap: 6px; 
             }
-            #bar-toggle { bottom: var(--bar-height); width: 46px; height: 24px; font-size: 12px; }
+            #bar-toggle { width: 28px; height: 60px; font-size: 12px; right: -28px; }
             #scene-caption { font-size: 10px; padding: 0 10px; }
             .control-btn { font-size: 12px; padding: 0 8px; }
         }
@@ -648,11 +659,7 @@
                 --thumb-size: 56px; 
                 --thumb-gap: 6px; 
             }
-            #bar-toggle { bottom: var(--bar-height); width: 40px; height: 24px; font-size: 12px; }
-            
-            #bar-toggle.collapsed {
-                bottom: 0;
-            }
+            #bar-toggle { width: 26px; height: 56px; font-size: 11px; right: -26px; }
             
             #control-bar-top {
                 height: 36px;
@@ -730,10 +737,10 @@
                 --thumb-gap: 4px; 
             }
             #bar-toggle {
-                bottom: var(--bar-height);
-                width: 36px;
-                height: 22px;
-                font-size: 11px;
+                width: 24px;
+                height: 50px;
+                font-size: 10px;
+                right: -24px;
             }
             
             #control-bar-bottom {
@@ -783,8 +790,10 @@
             }
             
             #bar-toggle {
-                bottom: var(--bar-height);
-                height: 20px;
+                width: 22px;
+                height: 44px;
+                font-size: 9px;
+                right: -22px;
             }
             
             #control-bar-top {
@@ -1067,7 +1076,15 @@ const baseURL = window.location.pathname.includes('/tour_adige/')
     : './';
 const folder = baseURL + 'panorami/';
 
-var viewer = new Marzipano.Viewer(document.getElementById('pano'));
+// Crea viewer con controlli touch espliciti per mobile
+var viewer = new Marzipano.Viewer(document.getElementById('pano'), {
+    controls: {
+        mouseViewMode: 'drag',
+        // Abilita esplicitamente pinch-to-zoom su touch devices
+        touch: true,
+        pinch: true
+    }
+});
 var scenes = [];
 var markers = [];
 var map, currentView, currentSceneIndex = 0;
@@ -1109,7 +1126,7 @@ function hideUI() {
         controlBar.classList.add('collapsed');
         if (barToggle) {
             barToggle.classList.add('collapsed');
-            barToggle.textContent = '▼';
+            barToggle.textContent = '⏴'; // Espandi verso sinistra
         }
     }
 }
@@ -1294,8 +1311,10 @@ async function init() {
         
         // Limiter ottimizzato per mobile: FOV più ampio su mobile per zoom percepibile
         var isMobile = window.innerWidth < 768;
-        var limiter = Marzipano.RectilinearView.limit.traditional(4096, isMobile ? 30*Math.PI/180 : 45*Math.PI/180, 120*Math.PI/180);
-        var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: Math.PI/2 }, limiter);
+        var fovMin = isMobile ? (30 * Math.PI / 180) : (45 * Math.PI / 180);
+        var fovInitial = isMobile ? (75 * Math.PI / 180) : (90 * Math.PI / 180); // FOV iniziale più ampio su mobile
+        var limiter = Marzipano.RectilinearView.limit.traditional(4096, fovMin, 120*Math.PI/180);
+        var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: fovInitial }, limiter);
         
         // Cache aumentata a 500MB per evitare che texture spariscano
         var scene = viewer.createScene({ 
@@ -1939,7 +1958,7 @@ function toggleBar() {
         // Sto aprendo la barra
         controlBar.classList.remove('collapsed');
         barToggle.classList.remove('collapsed');
-        barToggle.textContent = '▲';
+        barToggle.textContent = '⏵'; // Contrai verso destra
         barToggle.title = getTranslation('hideBar');
         
         // Ripristina la visibilità del titolo
@@ -1956,14 +1975,14 @@ function toggleBar() {
         // Sto chiudendo la barra
         controlBar.classList.add('collapsed');
         barToggle.classList.add('collapsed');
-        barToggle.textContent = '▼';
+        barToggle.textContent = '⏴'; // Espandi verso sinistra
         barToggle.title = getTranslation('showBar');
     }
 }
 </script>
 
 <!-- Control Bar (Due livelli: superiore con controlli, inferiore con thumbnails) -->
-<button id="bar-toggle" title="Mostra/Nascondi barra" aria-label="Mostra o nascondi la barra di controllo" onclick="toggleBar()">▲</button>
+<button id="bar-toggle" title="Mostra/Nascondi barra" aria-label="Mostra o nascondi la barra di controllo" onclick="toggleBar()">⏴</button>
 
 <div id="control-bar">
     <!-- TOP ROW (44px): Controlli -->

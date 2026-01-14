@@ -4,6 +4,11 @@
     <title>Tour 360 Pro</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Preconnect ai CDN per velocizzare il caricamento -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
+    <link rel="dns-prefetch" href="https://server.arcgisonline.com" />
+    <link rel="dns-prefetch" href="https://basemaps.cartocdn.com" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <style>
         :root {
@@ -1056,7 +1061,7 @@ function updateLayerNames() {
   }
 }
 
-// TILES per rendering (multi-risoluzione)
+// TILES per rendering veloce (con ottimizzazioni anti-pezzi-mancanti)
 const panoramaFiles = ['panorama1.tiles', 'panorama2.tiles', 'panorama3.tiles'];
 // JPG originali per lettura GPS EXIF
 const panoramaFilesForGps = ['panorama1.jpg', 'panorama2.jpg', 'panorama3.jpg'];
@@ -1165,21 +1170,28 @@ async function init() {
         }
     }
 
-    map = L.map('mapContainer', { zoomControl: false, attributionControl: false });
+    // Inizializza mappa ma non caricare i tiles subito (lazy load)
+    map = L.map('mapContainer', { zoomControl: false, attributionControl: false, preferCanvas: true });
     
     // Layer base (OpenStreetMap) - default più familiare e professionale
     baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 18,
+        updateWhenIdle: true  // Carica tiles solo quando la mappa è ferma
     });
     
     // Layer satellitare
     satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Esri'
+        attribution: 'Esri',
+        maxZoom: 18,
+        updateWhenIdle: true
     });
 
     // Layer Carto (light)
     cartoLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; CartoDB'
+        attribution: '&copy; CartoDB',
+        maxZoom: 18,
+        updateWhenIdle: true
     });
 
     // layers array: ogni elemento ha {layer, name, icon}
@@ -1195,45 +1207,47 @@ async function init() {
     buildLayerMenu();
 
     locations.forEach((data, index) => {
-        // Configurazione tiles ottimizzata per mobile e connessioni lente
-        // Solo 3 livelli (256, 512, 1024) per caricamento veloce
-        var levelsBase = [
-            { tileSize: 256, size: 256, fallbackOnly: true },  // Level 0: preview immediata
-            { tileSize: 512, size: 512 },                      // Level 1: qualità base
-            { tileSize: 512, size: 1024 }                      // Level 2: qualità finale
+        // 4 livelli corrispondenti alle cartelle 1,2,3,4 (z Marzipano 0,1,2,3)
+        var levelsOptimized = [
+            { tileSize: 512, size: 512, fallbackOnly: true },
+            { tileSize: 512, size: 1024 },
+            { tileSize: 512, size: 2048 },
+            { tileSize: 512, size: 4096 }
         ];
         
-        // Se il file ha estensione .tiles usa CubeGeometry (tiles ottimizzati)
-        // altrimenti usa EquirectGeometry (immagine singola) come fallback
         var isTiled = data.file.includes('.tiles');
         var source, geometry;
         
         if (isTiled) {
-            // Configurazione tiles cube: carica solo le facce visibili e le tiles necessarie
             var urlPrefix = folder + data.file;
-            source = Marzipano.ImageUrlSource.fromString(
-                urlPrefix + "/{f}/{z}/{y}/{x}.jpg",
-                { cubeMapPreviewUrl: urlPrefix + "/preview.jpg" }
-            );
-            // CubeGeometry ottimizzato: solo 3 livelli per performance mobile
-            geometry = new Marzipano.CubeGeometry(levelsBase);
+            // Mapping custom: cartelle z sono 1-based (1..4) e le righe y=0 stanno nella root del livello
+            source = new Marzipano.ImageUrlSource(function(tile) {
+                var level = tile.z + 1; // Marzipano parte da 0, cartelle partono da 1
+                var yPart = (tile.y === 0) ? '' : (tile.y + '/');
+                return { url: urlPrefix + '/' + tile.face + '/' + level + '/' + yPart + tile.x + '.jpg' };
+            }, {
+                cubeMapPreviewUrl: urlPrefix + "/preview.jpg",
+                concurrency: 4  // Carica solo 4 tiles alla volta per evitare buchi
+            });
+            geometry = new Marzipano.CubeGeometry(levelsOptimized);
         } else {
-            // Fallback: immagine equirettangolare singola con 3 livelli
+            // Fallback equirettangolare
             source = Marzipano.ImageUrlSource.fromString(folder + data.file);
-            geometry = new Marzipano.EquirectGeometry([{ width: 500 }, { width: 1000 }, { width: 2000 }]);
+            geometry = new Marzipano.EquirectGeometry([{ width: 1000 }, { width: 2000 }, { width: 4000 }, { width: 8000 }]);
         }
         
-        var limiter = Marzipano.RectilinearView.limit.traditional(4000, 100*Math.PI/180);
+        // Limiter per 4 livelli fino a 4096px
+        var limiter = Marzipano.RectilinearView.limit.traditional(8192, 40*Math.PI/180, 140*Math.PI/180);
         var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: Math.PI/2 }, limiter);
         
-        // Ottimizzazioni aggressive per mobile
+        // Cache aumentata a 500MB per evitare che texture spariscano
         var scene = viewer.createScene({ 
             source: source, 
             geometry: geometry, 
             view: view,
-            pinFirstLevel: true,     // Mantiene livello preview in cache
+            pinFirstLevel: true,  // TIENE SEMPRE IL LIVELLO SFOCATO SOTTO (mai più nero!)
             textureStoreOpts: {
-                previouslyVisibleCacheSize: 64 * 1024 * 1024  // 64MB cache ridotta per mobile
+                previouslyVisibleCacheSize: 500 * 1024 * 1024  // 500MB di cache
             }
         });
         
@@ -1247,7 +1261,6 @@ async function init() {
             lng: data.lng,
             id: sceneId,
             hotspotsCreated: false,
-            source,
             isTiled
         });
 
@@ -1257,7 +1270,7 @@ async function init() {
 
         var btn = document.createElement('button');
         btn.className = 'scene-btn';
-        // Usa preview.jpg per tiles, immagine originale per .jpg
+        // Usa preview.jpg per tiles (più leggera), immagine originale per jpg
         var thumbSrc = isTiled ? folder + data.file + '/preview.jpg' : folder + data.file;
         btn.innerHTML = `<img src="${thumbSrc}" loading="lazy"><div class="btn-label">Punto ${index+1}</div>`;
         btn.onclick = () => switchScene(index);
@@ -1320,10 +1333,18 @@ async function init() {
     setLanguage(currentLanguage);
     
     // Nascondi loader rapidamente dopo che la prima scena è pronta
-    setTimeout(() => hideLoader(), 400);
+    setTimeout(() => hideLoader(), 300);
     
-    // Precarica aggressivamente le altre scene in background dopo 800ms
-    setTimeout(() => preloadScenes(), 800);
+    // Ritarda il caricamento tiles della mappa per non competere con il panorama
+    setTimeout(() => {
+        if (map) {
+            map.invalidateSize();
+            console.log('✓ Mappa lazy-loaded');
+        }
+    }, 1500);
+    
+    // Precarica le altre scene solo dopo che la mappa è caricata
+    setTimeout(() => preloadScenes(), 2500);
 }
 
 // Precarica tutte le scene in background con caricamento aggressivo delle texture
@@ -1383,64 +1404,7 @@ function switchScene(index) {
     document.querySelectorAll('.scene-btn').forEach((b, i) => b.classList.toggle('active', i === index));
     document.querySelectorAll('.thumb-item').forEach((t, i) => t.classList.toggle('active', i === index));
     refreshSceneCaption(index);
-    scheduleHiResUpgrade();
-}
-
-// Abilita il livello 4096 solo dopo la prima interazione dell'utente (riduce richieste iniziali)
-function scheduleHiResUpgrade() {
-    var data = scenes[currentSceneIndex];
-    if (!data || data.hiResEnabled || !data.isTiled) return;
-    var panoEl = document.getElementById('pano');
-    if (!panoEl) return;
-
-    var handler = function() {
-        upgradeSceneToHiRes(currentSceneIndex);
-    };
-    // Usa once per evitare listener multipli
-    panoEl.addEventListener('mousedown', handler, { once: true });
-    panoEl.addEventListener('touchstart', handler, { once: true, passive: true });
-}
-
-function upgradeSceneToHiRes(index) {
-    var data = scenes[index];
-    if (!data || data.hiResEnabled || !data.isTiled) return;
-    try {
-        var limiter = Marzipano.RectilinearView.limit.traditional(8000, 100*Math.PI/180);
-        var currentParams = data.view && typeof data.view.yaw === 'function' ? {
-            yaw: data.view.yaw(),
-            pitch: data.view.pitch(),
-            fov: data.view.fov()
-        } : { yaw: 0, pitch: 0, fov: Math.PI/2 };
-
-        var newView = new Marzipano.RectilinearView(currentParams, limiter);
-        var newGeometry = new Marzipano.CubeGeometry(data.levelsHiRes || []);
-        var newScene = viewer.createScene({
-            source: data.source,
-            geometry: newGeometry,
-            view: newView,
-            pinFirstLevel: true,
-            textureStoreOpts: {
-                previouslyVisibleCacheSize: 256 * 1024 * 1024
-            }
-        });
-
-        var wasActive = currentSceneIndex === index;
-        var oldScene = data.scene;
-
-        scenes[index].scene = newScene;
-        scenes[index].view = newView;
-        scenes[index].hiResEnabled = true;
-
-        if (wasActive) {
-            newScene.switchTo({ transitionDuration: 0 });
-            // Ricrea hotspot e stato attivo
-            try { switchScene(index); } catch(e) {}
-        }
-        if (oldScene && oldScene.destroy) oldScene.destroy();
-        console.log('✓ Livello 4096 abilitato per scena', index + 1);
-    } catch (e) {
-        console.warn('upgradeSceneToHiRes fallito', e);
-    }
+    // Con immagini equirettangolari, il caricamento progressivo è gestito automaticamente
 }
 
 function navigateScene(dir) {

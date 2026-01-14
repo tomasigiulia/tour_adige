@@ -48,6 +48,10 @@
   // Initialize viewer.
   var viewer = new Marzipano.Viewer(panoElement, viewerOpts);
   viewer.controls().enableMethod('pinch');
+  // FORZA pinch dopo i controlli custom
+  setTimeout(function() {
+    viewer.controls().enableMethod('pinch');
+  }, 0);
   // Create scenes.
   var scenes = data.scenes.map(function(data) {
     var source = Marzipano.ImageUrlSource.fromString(

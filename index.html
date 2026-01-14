@@ -207,18 +207,23 @@
             transform: translate(-50%, 0);
             width: min(96vw, calc(var(--thumb-count) * (var(--thumb-size) + var(--thumb-gap)) + 260px));
             max-width: 1200px;
-            height: var(--bar-height);
+            max-height: var(--bar-height);
             background: rgba(0, 0, 0, 0.72);
             backdrop-filter: blur(14px);
             border-top: 1px solid rgba(255,255,255,0.15);
             z-index: 1001;
             display: flex;
             flex-direction: column;
-            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: visible;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            opacity: 1;
         }
         
         #control-bar.collapsed {
-            transform: translate(-50%, var(--bar-height));
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            border-top: none;
         }
 
         /* --- TOGGLE BUTTON --- */
@@ -317,12 +322,14 @@
         .thumb-item {
             flex: 0 0 var(--thumb-size);
             height: var(--thumb-size);
+            min-width: var(--thumb-size);
             border-radius: 4px;
             cursor: pointer;
             border: 3px solid transparent;
             overflow: hidden;
             transition: all 0.15s ease;
             position: relative;
+            background: #222; /* Colore di sfondo mentre carica l'immagine per evitare sfarfallio */
         }
         .thumb-item::after {
             content: '';
@@ -537,12 +544,19 @@
                 flex-shrink: 0;
             }
             
-            /* Mappa: posizionata sopra il titolo per non coprire troppo */
+            /* Mappa: ottimizzata per mobile - più piccola e meno invasiva */
             #map-box {
-                top: 50px;
-                right: 8px;
-                width: 150px;
-                height: 120px;
+                top: 10px;
+                right: 10px;
+                width: 140px;
+                height: 140px;
+                border-radius: 12px;
+                border: 2px solid rgba(255,255,255,0.3);
+            }
+            
+            /* Nascondi i controlli zoom della mappa su mobile per risparmiare spazio */
+            .map-controls {
+                display: none !important;
             }
             
             #map-box.collapsed {
@@ -1043,6 +1057,42 @@ var baseLayer, satelliteLayer, cartoLayer, layers = [], currentLayerIndex = 0;
 var rotationLocked = false;
 var rotationTimer = null; // timer per riabilitare la rotazione dopo X ms
 var rotationLockMode = null; // null | 'manual' | 'temporary'
+var uiTimeout; // timer per auto-hide UI
+var manualToggle = false; // flag per disabilitare auto-hide dopo toggle manuale
+
+// Auto-hide UI dopo inattività
+function showUI() {
+    // Se l'utente ha aperto/chiuso manualmente, non fare auto-hide
+    if (manualToggle) return;
+    
+    var controlBar = document.getElementById('control-bar');
+    var titleWrapper = document.getElementById('title-wrapper');
+    if (controlBar) controlBar.classList.remove('collapsed');
+    if (titleWrapper) titleWrapper.style.opacity = '1';
+    clearTimeout(uiTimeout);
+    uiTimeout = setTimeout(hideUI, 5000); // Nasconde dopo 5 secondi di inattività
+}
+
+function hideUI() {
+    // Se l'utente ha gestito manualmente, non fare auto-hide
+    if (manualToggle) return;
+    
+    // Chiude solo se non siamo già chiusi e se non c'è un modale aperto
+    var infoModal = document.getElementById('info-modal');
+    if (infoModal && infoModal.style.display === 'block') return;
+    
+    var controlBar = document.getElementById('control-bar');
+    var barToggle = document.getElementById('bar-toggle');
+    
+    // Usa solo le classi, non toccare .style.opacity manualmente
+    if (controlBar && !controlBar.classList.contains('collapsed')) {
+        controlBar.classList.add('collapsed');
+        if (barToggle) {
+            barToggle.classList.add('collapsed');
+            barToggle.textContent = '▼';
+        }
+    }
+}
 
 function convertToDecimal(ref, deg, min, sec) {
     var factor = (ref === 'S' || ref === 'W') ? -1 : 1;
@@ -1167,6 +1217,21 @@ async function init() {
     setLayer(0);
     // costruisci il menu dei layer
     buildLayerMenu();
+    
+    // Impedisce che i tocchi sulla mappa muovano il panorama 360
+    var mapEl = document.getElementById('map-box');
+    mapEl.addEventListener('touchstart', function(e) { e.stopPropagation(); }, {passive: true});
+    mapEl.addEventListener('touchmove', function(e) { e.stopPropagation(); }, {passive: true});
+    mapEl.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+    
+    // Disabilita il trascinamento della mappa su mobile per permettere lo scroll della pagina
+    if (window.innerWidth < 768) {
+        map.dragging.disable();
+        // Riabilita il drag solo dopo un primo tocco per evitare movimenti accidentali
+        mapEl.addEventListener('click', function() {
+            map.dragging.enable();
+        }, { once: true });
+    }
 
     locations.forEach((data, index) => {
         // 4 livelli corrispondenti alle cartelle 1,2,3,4 (z Marzipano 0,1,2,3)
@@ -1182,14 +1247,25 @@ async function init() {
         
         if (isTiled) {
             var urlPrefix = folder + data.file;
-            // Mapping custom: cartelle z sono 1-based (1..4) e le righe y=0 stanno nella root del livello
+            // Mapping corretto per la struttura delle cartelle Marzipano
             source = new Marzipano.ImageUrlSource(function(tile) {
-                var level = tile.z + 1; // Marzipano parte da 0, cartelle partono da 1
-                var yPart = (tile.y === 0) ? '' : (tile.y + '/');
-                return { url: urlPrefix + '/' + tile.face + '/' + level + '/' + yPart + tile.x + '.jpg' };
+                var level = tile.z + 1; // Le tue cartelle partono da 1, Marzipano da 0
+                var face = tile.face;
+                var x = tile.x;
+                var y = tile.y;
+                
+                // Costruzione dinamica del percorso file
+                var path = urlPrefix + '/' + face + '/' + level + '/';
+                if (y !== 0) {
+                    path += y + '/';
+                }
+                path += x + '.jpg';
+                
+                return { url: path };
             }, {
                 cubeMapPreviewUrl: urlPrefix + "/preview.jpg",
-                concurrency: 4  // Carica solo 4 tiles alla volta per evitare buchi
+                concurrency: 4, // Limite per stabilità su GitHub Pages
+                retryDelay: 500 // Riprova dopo 500ms se una tile fallisce
             });
             geometry = new Marzipano.CubeGeometry(levelsOptimized);
         } else {
@@ -1198,8 +1274,8 @@ async function init() {
             geometry = new Marzipano.EquirectGeometry([{ width: 1000 }, { width: 2000 }, { width: 4000 }, { width: 8000 }]);
         }
         
-        // Limiter per 4 livelli fino a 4096px
-        var limiter = Marzipano.RectilinearView.limit.traditional(8192, 40*Math.PI/180, 140*Math.PI/180);
+        // Limiter ottimizzato per mobile: risoluzione ridotta e FOV range più stretto per evitare distorsioni
+        var limiter = Marzipano.RectilinearView.limit.traditional(4096, 45*Math.PI/180, 120*Math.PI/180);
         var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: Math.PI/2 }, limiter);
         
         // Cache aumentata a 500MB per evitare che texture spariscano
@@ -1249,7 +1325,9 @@ async function init() {
 
     // Aggiorna la variabile CSS per dimensionare la barra in base al numero di viste
     try {
-        document.documentElement.style.setProperty('--thumb-count', scenes.length || 0);
+        // Forza il conteggio esatto delle miniature per sicurezza
+        var thumbCount = scenes.length || 3;
+        document.documentElement.style.setProperty('--thumb-count', thumbCount);
     } catch(e) {}
     
     // Se abbiamo coordinate reali facciamo fitBounds, altrimenti centriamo su (0,0)
@@ -1302,16 +1380,50 @@ async function init() {
     // Nascondi loader rapidamente dopo che la prima scena è pronta
     setTimeout(() => hideLoader(), 300);
     
-    // Ritarda il caricamento tiles della mappa per non competere con il panorama
+    // Ritarda il caricamento tiles della mappa per non competere con il panorama (aumentato per GitHub Pages)
     setTimeout(() => {
         if (map) {
             map.invalidateSize();
             console.log('✓ Mappa lazy-loaded');
         }
-    }, 1500);
+    }, 3000);
     
     // Precarica le altre scene solo dopo che la mappa è caricata
     setTimeout(() => preloadScenes(), 2500);
+    
+    // Gestione resize fluido su mobile (quando scompare/appare la barra indirizzi)
+    var resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            if (viewer) {
+                viewer.updateSize(); // Forza Marzipano ad adattarsi alle nuove dimensioni
+            }
+            if (map) {
+                map.invalidateSize(); // Ridisegna la mappa correttamente
+            }
+        }, 200);
+    });
+    
+    // Contrae la mappa automaticamente quando l'utente interagisce con il panorama
+    if (viewer && viewer.controls) {
+        viewer.controls().addEventListener('active', function() {
+            var mapBox = document.getElementById('map-box');
+            if (mapBox && !mapBox.classList.contains('collapsed')) {
+                mapBox.classList.add('collapsed');
+                // Aggiorna la dimensione interna di Leaflet per evitare bug grafici
+                setTimeout(function() { if (map) map.invalidateSize(); }, 300);
+            }
+            // Mostra UI quando l'utente interagisce
+            showUI();
+        });
+    }
+    
+    // Attiva il controllo UI sui tocchi/click
+    document.addEventListener('touchstart', showUI);
+    document.addEventListener('mousedown', showUI);
+    // Avvia il timer iniziale per nascondere UI dopo 5 secondi
+    showUI();
 }
 
 // Precarica tutte le scene in background con caricamento aggressivo delle texture
@@ -1322,12 +1434,17 @@ function preloadScenes() {
 
 function switchScene(index) {
     var data = scenes[index];
-    data.scene.switchTo({ transitionDuration: 800 });
+    // Transizione più lunga per mascherare il caricamento tiles su GitHub Pages
+    data.scene.switchTo({ transitionDuration: 1200 });
+    
+    // Forza dissolvenza fluida con CSS opacity per nascondere i buchi durante il caricamento
     var panoEl = document.getElementById('pano');
     if (panoEl) {
-        panoEl.classList.remove('fade-in');
-        void panoEl.offsetWidth; // forza reflow per riavviare l'animazione
-        panoEl.classList.add('fade-in');
+        panoEl.style.opacity = '0';
+        setTimeout(function() {
+            panoEl.style.transition = 'opacity 0.9s ease';
+            panoEl.style.opacity = '1';
+        }, 100);
     }
     // Ripristina yaw/pitch/fov alla vista iniziale ogni volta che si entra nella scena
     try {
@@ -1340,7 +1457,24 @@ function switchScene(index) {
     currentView = data.view;
     currentSceneIndex = index;
     
-    map.panTo([data.lat, data.lng]);
+    // Riapri la mappa e resetta lo zoom alla vista predefinita
+    var mapBox = document.getElementById('map-box');
+    if (mapBox && mapBox.classList.contains('collapsed')) {
+        mapBox.classList.remove('collapsed');
+        setTimeout(function() { if (map) map.invalidateSize(); }, 300);
+    }
+    
+    // Resetta la vista della mappa per mostrare tutti i marker
+    if (map && markers && markers.length > 0) {
+        try {
+            var bounds = L.latLngBounds(scenes.map(s => [s.data.lat, s.data.lng]));
+            map.fitBounds(bounds, {padding: [30,30]});
+        } catch(e) {
+            // Fallback: centra solo sulla scena corrente
+            map.panTo([data.lat, data.lng]);
+        }
+    }
+    
     markers.forEach((m, i) => m.setStyle({ fillColor: i === index ? "#27ae60" : "#3498db" }));
 
     // Creazione Hotspot Nativa
@@ -1755,17 +1889,38 @@ function hideInfoHotspot() {
 function toggleBar() {
     var controlBar = document.getElementById('control-bar');
     var barToggle = document.getElementById('bar-toggle');
+    var titleWrapper = document.getElementById('title-wrapper');
     
-    controlBar.classList.toggle('collapsed');
-    barToggle.classList.toggle('collapsed');
+    // 1. Disabilita completamente l'auto-hide quando l'utente usa il toggle manuale
+    manualToggle = true;
+    clearTimeout(uiTimeout);
     
-    // Cambia il simbolo: ▲ quando aperto, ▼ quando chiuso
-    if (barToggle.classList.contains('collapsed')) {
-        barToggle.textContent = '▼';
-        barToggle.title = getTranslation('showBar');
-    } else {
+    // 2. Cambia lo stato
+    var isCurrentlyCollapsed = controlBar.classList.contains('collapsed');
+    
+    if (isCurrentlyCollapsed) {
+        // Sto aprendo la barra
+        controlBar.classList.remove('collapsed');
+        barToggle.classList.remove('collapsed');
         barToggle.textContent = '▲';
         barToggle.title = getTranslation('hideBar');
+        
+        // Ripristina la visibilità del titolo
+        if (titleWrapper) titleWrapper.style.opacity = '1';
+        
+        // Forza il browser a ricalcolare le miniature se erano rimaste "invisibili"
+        setTimeout(function() {
+            var track = document.getElementById('thumb-track');
+            if (track) {
+                track.scrollLeft = track.scrollLeft; // Forza il ridisegno dello scroll
+            }
+        }, 100);
+    } else {
+        // Sto chiudendo la barra
+        controlBar.classList.add('collapsed');
+        barToggle.classList.add('collapsed');
+        barToggle.textContent = '▼';
+        barToggle.title = getTranslation('showBar');
     }
 }
 </script>

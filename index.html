@@ -24,8 +24,8 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: #000; overflow: hidden; }
-        /* Ottimizza touch per fluidità - touch-action: manipulation permette zoom pinch e movimento fluido */
-        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: manipulation; }
+        /* Ottimizza touch - touch-action: auto permette al viewer di gestire i tocchi (zoom pinch incluso) */
+        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: auto; }
         #pano.fade-in { animation: panoFade 0.8s ease; }
         @keyframes panoFade { from { opacity: 0.45; } to { opacity: 1; } }
 
@@ -246,6 +246,7 @@
             font-size: 16px;
             transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1002;
+            margin-bottom: -1px; /* Sovrappone di 1px per eliminare la fessura visiva */
         }
         
         #bar-toggle:hover {
@@ -256,6 +257,7 @@
         #bar-toggle.collapsed {
             transform: translateX(-50%);
             bottom: 0;
+            margin-bottom: 0;
         }
 
         /* --- TOP ROW (44px) --- */
@@ -1730,32 +1732,30 @@ function toggleRotation(e) {
 }
 
 function toggleFullscreen() {
-    try {
-        var el = document.documentElement;
-        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
-            // Prova tutti i metodi di fullscreen supportati
-            if (el.requestFullscreen) {
-                el.requestFullscreen().catch(err => console.log('Fullscreen err:', err));
-            } else if (el.webkitRequestFullscreen) {
-                el.webkitRequestFullscreen();
-            } else if (el.mozRequestFullScreen) {
-                el.mozRequestFullScreen();
-            } else if (el.msRequestFullscreen) {
-                el.msRequestFullscreen();
-            }
-        } else {
-            // Esci da fullscreen
-            if (document.exitFullscreen) {
-                document.exitFullscreen().catch(err => console.log('Exit fullscreen err:', err));
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
+    var doc = window.document;
+    var docEl = doc.documentElement;
+
+    var requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+    var cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+
+    // Verifica lo stato di fullscreen con tutti i prefissi
+    var isFullscreen = doc.fullscreenElement || doc.mozFullScreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement;
+
+    if (!isFullscreen) {
+        // Richiedi fullscreen
+        if (requestFullScreen) {
+            requestFullScreen.call(docEl).catch(function(err) {
+                console.log('Fullscreen non disponibile:', err);
+            });
         }
-    } catch(e) { console.log('Fullscreen not available:', e); }
+    } else {
+        // Esci da fullscreen
+        if (cancelFullScreen) {
+            cancelFullScreen.call(doc).catch(function(err) {
+                console.log('Exit fullscreen error:', err);
+            });
+        }
+    }
 }
 
 // Quando la rotazione è bloccata, assicuriamoci che qualsiasi click/touch non riattivi

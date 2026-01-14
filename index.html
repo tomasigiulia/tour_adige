@@ -224,10 +224,10 @@
         }
         
         #control-bar.collapsed {
-            width: 0; /* Completamente nascosta */
-            opacity: 0;
+            width: 80px; /* Ripristina 80px - mostra frecce dentro */
+            opacity: 1; /* Visibile sempre */
             transform: translateX(-50%);
-            pointer-events: none; /* Non intercetta click */
+            pointer-events: auto; /* Clicca dentro */
         }
         
         #control-bar.collapsed #control-bar-top,
@@ -235,38 +235,23 @@
             opacity: 0;
             pointer-events: none;
         }
+        
+        #control-bar.collapsed::after {
+            content: "⏴  ⏵"; /* Frecce orizzontali sullo stesso livello */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 13px;
+            letter-spacing: 8px; /* Spazio tra le frecce */
+            white-space: nowrap;
+            pointer-events: none;
+        }
 
         /* --- TOGGLE BUTTON (espansione orizzontale) --- */
         #bar-toggle {
-            position: fixed; /* Fixed per essere sempre visibile */
-            bottom: calc(var(--bar-height) / 2); /* Centro verticale della barra */
-            left: calc(50% + min(48vw, calc((var(--thumb-count) * (var(--thumb-size) + var(--thumb-gap)) + 260px) / 2))); /* Destra della barra */
-            transform: translateY(50%);
-            width: 32px;
-            height: 80px;
-            background: linear-gradient(90deg, rgba(44, 62, 80, 0.92), rgba(20, 30, 40, 0.92));
-            border: 1px solid rgba(255,255,255,0.12);
-            border-left: none;
-            border-radius: 0 8px 8px 0; /* Arrotonda solo lato destro */
-            color: #fff;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1003; /* Sopra la barra */
-            backdrop-filter: blur(10px);
-        }
-        
-        #bar-toggle:hover {
-            background: linear-gradient(90deg, rgba(52, 152, 219, 0.9), rgba(30, 100, 180, 0.9));
-            border-color: rgba(52, 152, 219, 0.5);
-        }
-        
-        #bar-toggle.collapsed {
-            left: 50%; /* Centro schermo quando barra nascosta */
-            transform: translateX(-50%) translateY(50%); /* Centra la linguetta */
+            display: none; /* Nascosto - frecce dentro la barra */
         }
 
         /* --- TOP ROW (44px) --- */
@@ -1224,9 +1209,14 @@ async function init() {
         zoomControl: false, 
         attributionControl: false, 
         preferCanvas: true,
-        touchZoom: true,
+        touchZoom: true,      // Abilita pinch-to-zoom
+        touch: true,          // Abilita touch drag
+        dragging: true,       // Abilita trascinamento
         doubleClickZoom: true,
-        scrollWheelZoom: false
+        scrollWheelZoom: false,
+        tap: true,            // Tap per doppio click su mobile
+        tapTolerance: 15,     // Tolleranza tap in px
+        bounceAtZoomLimits: true
     });
     
     // Layer base (OpenStreetMap) - default più familiare e professionale
@@ -1264,9 +1254,20 @@ async function init() {
     
     // Impedisce che i tocchi sulla mappa muovano il panorama 360 - blocco SELETTIVO
     var mapEl = document.getElementById('map-box');
-    mapEl.addEventListener('touchstart', function(e) { e.stopPropagation(); }, {passive: false});
-    mapEl.addEventListener('touchmove', function(e) { e.stopPropagation(); }, {passive: false});
-    mapEl.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+    var mapContainer = document.getElementById('mapContainer');
+    
+    // Blocca solo sul container interno della mappa (non su tutto map-box)
+    mapContainer.addEventListener('touchstart', function(e) { 
+        e.stopPropagation(); 
+    }, {passive: true}); // passive: true per Leaflet possa preventDefault
+    
+    mapContainer.addEventListener('touchmove', function(e) { 
+        // NON bloccare - lascia che Leaflet lo gestisca
+    }, {passive: false});
+    
+    mapContainer.addEventListener('touchend', function(e) { 
+        e.stopPropagation(); 
+    }, {passive: true});
 
     locations.forEach((data, index) => {
         // 4 livelli corrispondenti alle cartelle 1,2,3,4 (z Marzipano 0,1,2,3)
@@ -1309,11 +1310,15 @@ async function init() {
             geometry = new Marzipano.EquirectGeometry([{ width: 1000 }, { width: 2000 }, { width: 4000 }, { width: 8000 }]);
         }
         
-        // Limiter ottimizzato per mobile: FOV più ampio su mobile per zoom percepibile
+        // Limiter ottimizzato per mobile: FOV ampio per zoom percepibile
         var isMobile = window.innerWidth < 768;
-        var fovMin = isMobile ? (30 * Math.PI / 180) : (45 * Math.PI / 180);
-        var fovInitial = isMobile ? (75 * Math.PI / 180) : (90 * Math.PI / 180); // FOV iniziale più ampio su mobile
-        var limiter = Marzipano.RectilinearView.limit.traditional(4096, fovMin, 120*Math.PI/180);
+        // FOV MIN: quanto meno posso zoomare OUT (ampio range)
+        // FOV INITIAL: da dove comincio
+        // FOV MAX: quanto più posso zoomare IN (ristretto)
+        var fovMin = isMobile ? (20 * Math.PI / 180) : (30 * Math.PI / 180);     // OUT massimo: 20° mobile, 30° desktop
+        var fovMax = isMobile ? (110 * Math.PI / 180) : (110 * Math.PI / 180);   // IN massimo: 110° (circa)
+        var fovInitial = isMobile ? (45 * Math.PI / 180) : (75 * Math.PI / 180); // Start: 45° mobile, 75° desktop (ampio)
+        var limiter = Marzipano.RectilinearView.limit.traditional(4096, fovMin, fovMax);
         var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: fovInitial }, limiter);
         
         // Cache aumentata a 500MB per evitare che texture spariscano
@@ -1991,6 +1996,7 @@ function toggleBar() {
         </div>
         <div id="scene-caption"></div>
         <div class="control-group">
+            <button id="compress-bar-btn" class="control-btn" onclick="toggleBar()" title="Comprimi barra" aria-label="Comprimi barra">⏵</button>
             <button id="rotation-toggle" class="control-btn" onclick="toggleRotation(event)" title="Blocca/Sblocca rotazione" aria-label="Blocca/Sblocca rotazione">⏸</button>
             <button id="fullscreen-toggle" class="control-btn" aria-label="Schermo intero" title="Schermo intero" onclick="toggleFullscreen()">⛶</button>
         </div>

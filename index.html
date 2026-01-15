@@ -387,6 +387,36 @@
             opacity: 1;
         }
         
+        /* --- ICONE SVG ELEGANTI --- */
+        .control-btn svg, 
+        #bar-toggle svg {
+            width: 24px;   /* Dimensione standard icona */
+            height: 24px;
+            fill: none;    /* Niente riempimento pieno */
+            stroke: #ffffff; /* Linea BIANCA elegante */
+            stroke-width: 2; /* Spessore linea moderno */
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); /* Ombra leggera per contrasto */
+            transition: all 0.2s ease;
+        }
+
+        /* Hover effect */
+        .control-btn:hover svg,
+        #bar-toggle:hover svg {
+            stroke: #3498db; /* Azzurro al passaggio mouse */
+            transform: scale(1.1);
+        }
+
+        /* Su mobile le icone devono essere leggermente più grandi */
+        @media (max-width: 768px) {
+            .control-btn svg,
+            #bar-toggle svg {
+                width: 28px;
+                height: 28px;
+            }
+        }
+        
         #control-bar.collapsed {
             transform: translateX(-50%) translateY(100%);
             opacity: 0;
@@ -790,9 +820,18 @@
             }
 
             /* --- MAPPA --- */
+            /* ALZIAMO LA MAPPA IN ALTO A DESTRA */
             #map-box {
-                width: 160px; /* Mappa un po' più grande per toccarla meglio */
-                height: 160px;
+                top: 20px !important;   /* Allineata con il pulsante Info a sinistra */
+                right: 20px !important; /* Margine standard */
+                bottom: auto !important;
+                width: 140px;
+                height: 140px;
+            }
+            
+            /* Quando è chiusa, il pallino sta in alto a destra, non in mezzo alla foto */
+            #map-box.collapsed {
+                top: 20px !important;
             }
             /* Tasto espandi mappa */
             #map-hover-toggle {
@@ -1562,6 +1601,11 @@ function toggleGyro() {
 function activateGyroLogic(btn) {
     gyroEnabled = !gyroEnabled;
     
+    // Icona VR OFF (Occhiali normali)
+    var svgGyroOff = '<svg viewBox="0 0 24 24"><path d="M6 9l2.5-4h7l2.5 4H6zM2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6H2zm4 3a2 2 0 100 4 2 2 0 000-4zm12 0a2 2 0 100 4 2 2 0 000-4z" /></svg>';
+    // Icona VR ON (Piena)
+    var svgGyroOn = '<svg viewBox="0 0 24 24"><path d="M2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6H2zm4 3a2 2 0 100 4 2 2 0 000-4zm12 0a2 2 0 100 4 2 2 0 000-4z" fill="currentColor" stroke="none"/></svg>';
+    
     if (gyroEnabled) {
         console.log('📱 Modalità Giroscopio attivata');
         
@@ -1586,10 +1630,11 @@ function activateGyroLogic(btn) {
         window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
         
         // Feedback visivo: cambio colore e icona
-        btn.style.color = '#3498db';
-        btn.innerHTML = '🕶️';
+        btn.innerHTML = svgGyroOn;
         btn.classList.add('active');
         btn.title = getTranslation('gyroMode') + ' (ATTIVO)';
+        var svg = btn.querySelector('svg');
+        if (svg) svg.style.stroke = '#3498db';
         
         // Opzionale: nascondi UI per immersione VR
         // var controlBar = document.getElementById('control-bar');
@@ -1611,10 +1656,11 @@ function activateGyroLogic(btn) {
         } catch(e) { console.log('Riabilitazione controlli classici (non critico):', e); }
         
         // Feedback visivo: ritorna a normale
-        btn.style.color = 'white';
-        btn.innerHTML = '📱';
+        btn.innerHTML = svgGyroOff;
         btn.classList.remove('active');
         btn.title = getTranslation('gyroMode');
+        var svg = btn.querySelector('svg');
+        if (svg) svg.style.stroke = '';
     }
 }
 
@@ -2315,18 +2361,30 @@ document.addEventListener('touchstart', function(e) { hideLayerMenu(); });
 function updateRotationButton() {
     var btn = document.getElementById('rotation-toggle');
     if (!btn) return;
+    
+    // Icona PAUSA (Due barre verticali)
+    var svgPause = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+    // Icona PLAY (Triangolo)
+    var svgPlay = '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+
     // Il pulsante resta sempre visibile, cambia solo stato/iconografia
     btn.style.display = 'inline-flex';
     if (rotationLocked) {
         btn.classList.add('locked');
-        btn.innerHTML = '▶';
+        btn.innerHTML = svgPlay; // Mostra Play perché è fermo
         btn.title = 'Blocca/Sblocca rotazione';
         btn.setAttribute('aria-label', 'Blocca/Sblocca rotazione');
+        // Colore rosso quando fermo
+        var svg = btn.querySelector('svg');
+        if (svg) svg.style.stroke = '#ff6b6b';
     } else {
         btn.classList.remove('locked');
-        btn.innerHTML = '⏸';
+        btn.innerHTML = svgPause; // Mostra Pausa perché sta girando
         btn.title = 'Blocca/Sblocca rotazione';
         btn.setAttribute('aria-label', 'Blocca/Sblocca rotazione');
+        // Torna bianco
+        var svg = btn.querySelector('svg');
+        if (svg) svg.style.stroke = '';
     }
 }
 
@@ -2569,6 +2627,11 @@ function toggleBar() {
     const toggle = document.getElementById('bar-toggle');
     const titleWrapper = document.getElementById('title-wrapper');
     
+    // Icona CHEVRON DOWN (Chiudi)
+    var svgDown = '<svg viewBox="0 0 24 24"><path d="M7 13l5 5 5-5M7 6l5 5 5-5"></path></svg>';
+    // Icona CHEVRON UP (Apri)
+    var svgUp = '<svg viewBox="0 0 24 24"><path d="M7 11l5-5 5 5M7 18l5-5 5 5"></path></svg>';
+    
     // Attiviamo il flag manualToggle per fermare l'auto-hide automatico 
     // se l'utente decide di chiudere/aprire da solo
     manualToggle = true; 
@@ -2577,12 +2640,12 @@ function toggleBar() {
     if (titleWrapper) titleWrapper.classList.toggle('collapsed', bar.classList.contains('collapsed'));
     
     if (bar.classList.contains('collapsed')) {
-        toggle.innerHTML = '⇯'; // Icona per riaprire (freccia su)
+        toggle.innerHTML = svgUp; // Icona per riaprire (freccia su)
         toggle.title = getTranslation('showBar');
         // Abbassa il titolo quando la barra è chiusa
         if (titleWrapper) titleWrapper.style.bottom = '20px';
     } else {
-        toggle.innerHTML = '⇳'; // Icona per chiudere
+        toggle.innerHTML = svgDown; // Icona per chiudere
         toggle.title = getTranslation('hideBar');
         // Rialza il titolo sopra la barra aperta
         if (titleWrapper) titleWrapper.style.bottom = 'calc(var(--bar-height) + 15px)';
@@ -2596,7 +2659,11 @@ if (window.innerWidth < 768) {
 </script>
 
 <!-- Control Bar (Due livelli: superiore con controlli, inferiore con thumbnails) -->
-<button id="bar-toggle" title="Mostra/Nascondi barra" aria-label="Mostra o nascondi la barra di controllo" onclick="toggleBar()">⇳</button>
+<button id="bar-toggle" title="Mostra/Nascondi barra" aria-label="Mostra o nascondi la barra di controllo" onclick="toggleBar()">
+    <svg viewBox="0 0 24 24" id="icon-bar-toggle">
+        <path d="M7 13l5 5 5-5M7 6l5 5 5-5"></path>
+    </svg>
+</button>
 
 <div id="control-bar">
     <!-- TOP ROW (44px): Controlli -->
@@ -2604,9 +2671,22 @@ if (window.innerWidth < 768) {
         <div class="control-group"></div>
         <div id="scene-caption"></div>
         <div class="control-group">
-            <button id="gyro-toggle" class="control-btn" onclick="toggleGyro()" title="Modalità Visore (Giroscopio)" aria-label="Modalità Visore (Giroscopio)">📱</button>
-            <button id="rotation-toggle" class="control-btn" onclick="toggleRotation(event)" title="Blocca/Sblocca rotazione" aria-label="Blocca/Sblocca rotazione">⏸</button>
-            <button id="fullscreen-toggle" class="control-btn" onclick="toggleFullscreen()" title="Schermo intero" aria-label="Schermo intero">⛶</button>
+            <button id="gyro-toggle" class="control-btn" onclick="toggleGyro()" title="Modalità Visore (Giroscopio)" aria-label="Modalità Visore (Giroscopio)">
+                <svg viewBox="0 0 24 24">
+                    <path d="M6 9l2.5-4h7l2.5 4H6zM2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6H2zm4 3a2 2 0 100 4 2 2 0 000-4zm12 0a2 2 0 100 4 2 2 0 000-4z" />
+                </svg>
+            </button>
+            <button id="rotation-toggle" class="control-btn" onclick="toggleRotation(event)" title="Blocca/Sblocca rotazione" aria-label="Blocca/Sblocca rotazione">
+                <svg viewBox="0 0 24 24" id="icon-rotation">
+                    <rect x="6" y="4" width="4" height="16"></rect>
+                    <rect x="14" y="4" width="4" height="16"></rect>
+                </svg>
+            </button>
+            <button id="fullscreen-toggle" class="control-btn" onclick="toggleFullscreen()" title="Schermo intero" aria-label="Schermo intero">
+                <svg viewBox="0 0 24 24">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+            </button>
         </div>
     </div>
     

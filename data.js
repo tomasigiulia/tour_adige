@@ -28,7 +28,7 @@ var data = {
       "initialViewParameters": {
         "pitch": 0,
         "yaw": 0,
-        "fov": 1.5707963267948966
+        "fov": 1.48
       },
       "linkHotspots": [
         {
@@ -70,7 +70,7 @@ var data = {
       "initialViewParameters": {
         "pitch": 0,
         "yaw": 0,
-        "fov": 1.5707963267948966
+        "fov": 1.48
       },
       "linkHotspots": [
         {
@@ -110,7 +110,7 @@ var data = {
       "initialViewParameters": {
         "pitch": 0,
         "yaw": 0,
-        "fov": 1.5707963267948966
+        "fov": 1.48
       },
       "linkHotspots": [
         {

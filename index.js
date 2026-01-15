@@ -38,10 +38,16 @@
     document.body.classList.add('touch');
   });
 
-  // Viewer options.
+  // Detect desktop or mobile for dynamic zoom settings
+  var isMobile = window.innerWidth < 768;
+  
+  // Viewer options with optimized scroll zoom and speed
   var viewerOpts = {
     controls: {
-      mouseViewMode: data.settings.mouseViewMode
+      mouseViewMode: data.settings.mouseViewMode,
+      scrollZoom: true,           // Enable scroll zoom on desktop
+      scrollZoomSpeed: 0.15,      // Much faster zoom (default ~0.05, tripled to 0.15)
+      touchViewMode: 'drag'       // Keep drag smooth on mobile
     }
   };
 
@@ -55,14 +61,36 @@
     );
     var geometry = new Marzipano.EquirectGeometry(data.levels);
 
-    var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180);
-    var view = new Marzipano.RectilinearView(data.initialViewParameters, limiter);
+    // Dynamic zoom limits: optimized for quality and range
+    // minFov controls how much you can zoom IN (lower = more zoom)
+    // maxFov controls how much you can zoom OUT (wider view)
+    // Using 4096 as theoretical max resolution (not faceSize) to prevent pixelation when zooming
+    var fovMinDeg = isMobile ? 30 : 15;    // Desktop: 15° (good zoom), Mobile: 30° (safe for touch)
+    var fovMaxDeg = isMobile ? 100 : 120;  // Desktop: 120° (ultra-wide), Mobile: 100° (no tunnel effect)
+    
+    var minFov = fovMinDeg * Math.PI / 180;
+    var maxFov = fovMaxDeg * Math.PI / 180;
+    
+    // Use 4096 as theoretical max resolution for quality preservation
+    var limiter = Marzipano.RectilinearView.limit.traditional(4096, minFov, maxFov);
+    
+    // Set initial view at 85° for cinematic feel (slightly more zoomed than default 90°)
+    var initialView = Object.assign({}, data.initialViewParameters);
+    if (!initialView.fov) {
+      initialView.fov = 85 * Math.PI / 180;  // 85° initial FOV
+    }
+    
+    var view = new Marzipano.RectilinearView(initialView, limiter);
 
     var scene = viewer.createScene({
       source: source,
       geometry: geometry,
       view: view,
-      pinFirstLevel: true
+      pinFirstLevel: true,
+      textureStoreOpts: {
+        // Increase cache to prevent texture disappearing when rotating while zoomed
+        previouslyVisibleCacheSize: 100
+      }
     });
 
     // Create link hotspots.

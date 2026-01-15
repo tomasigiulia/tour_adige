@@ -37,54 +37,112 @@
       cursor: grabbing;
     }
 
-                /* Posiziona il titolo sopra la barra delle scene */
-                #title-wrapper {
+                /* --- CONTENITORE COMUNE TOP-LEFT --- */
+                #top-left-controls {
                     position: absolute;
-                    top: auto !important;
-                    bottom: calc(var(--bar-height) + 40px);
-                    left: 50% !important;
-                    transform: translateX(-50%);
+                    top: 20px;
+                    left: 20px;
+                    z-index: 1100; /* Sopra a tutto */
                     display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                    align-items: center !important;
-                    z-index: 1001;
-                    pointer-events: none;
-                    transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, transform 0.25s ease;
+                    flex-direction: column; /* Impila Info sopra Lingua */
+                    gap: 12px; /* Spazio tra i due pulsanti */
+                    align-items: flex-start; /* Allinea tutto a sinistra */
+                    pointer-events: none; /* Lascia passare i click negli spazi vuoti */
                 }
 
-                #title-wrapper.collapsed {
+                /* --- WIDGET INFO (Pulsante + Testo) --- */
+                #info-widget {
+                    display: flex;
+                    align-items: center;
+                    pointer-events: auto; /* Riabilita click */
+                    gap: 0; /* Gap gestito dall'espansione */
+                    height: 40px;
+                }
+
+                /* Pulsante "i" Rotondo */
+                #info-toggle {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    background: rgba(0, 0, 0, 0.6);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    color: #fff;
+                    font-family: 'Segoe UI', sans-serif;
+                    font-weight: 700;
+                    font-size: 18px;
+                    font-style: italic; /* La "i" corsiva è elegante */
+                    cursor: pointer;
+                    backdrop-filter: blur(10px);
+                    -webkit-backdrop-filter: blur(10px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s ease;
+                    z-index: 2; /* Sta sopra al testo che si srotola */
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                }
+
+                #info-toggle:hover {
+                    background: #3498db;
+                    border-color: #3498db;
+                    transform: scale(1.05);
+                }
+
+                /* Contenitore del testo che si srotola */
+                #info-label {
+                    background: rgba(0, 0, 0, 0.6);
+                    backdrop-filter: blur(10px);
+                    -webkit-backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255,255,255,0.15);
+                    border-left: none; /* Unito visivamente al bottone */
+                    height: 36px; /* Leggermente più piccolo del bottone per estetica */
+                    display: flex;
+                    align-items: center;
+                    overflow: hidden;
+                    
+                    /* ANIMAZIONE SROTOLAMENTO */
+                    max-width: 0; /* Chiuso di default */
                     opacity: 0;
-                    transform: translateX(-50%) translateY(12px);
-                    pointer-events: none;
+                    padding: 0;
+                    margin-left: -20px; /* Nascosto sotto il bottone */
+                    border-radius: 0 20px 20px 0; /* Arrotondato solo a destra */
+                    
+                    transition: max-width 0.6s cubic-bezier(0.25, 1, 0.5, 1), 
+                                opacity 0.4s ease, 
+                                padding 0.4s ease, 
+                                margin-left 0.4s ease;
+                }
+
+                /* STATO APERTO (Classe aggiunta via JS) */
+                #info-widget.active #info-label {
+                    max-width: 400px; /* Larghezza massima sufficiente per il titolo */
+                    opacity: 1;
+                    padding: 0 20px 0 25px; /* Padding a sinistra extra per staccarsi dal bottone */
+                    margin-left: -10px; /* Si sposta fuori dal bottone */
+                }
+
+                /* Testo interno */
+                #info-text-content {
+                    color: #fff;
+                    white-space: nowrap;
+                    font-size: 13px;
+                    font-weight: 600;
+                    letter-spacing: 1px;
+                    text-transform: uppercase;
+                }
+
+                /* --- ADATTAMENTO LINGUA BUTTON --- */
+                /* (Rimuoviamo posizionamento assoluto perché ora è nel flex container) */
+                #lang-toggle {
+                    position: static !important; /* Reset position */
+                    pointer-events: auto;
+                    margin-left: 2px; /* Allineamento ottico col bottone info */
                 }
 
         #pano.fade-in { animation: panoFade 0.8s ease; }
         @keyframes panoFade { from { opacity: 0.45; } to { opacity: 1; } }
 
-        /* --- TITOLO (Design Pillola Minimalista) --- */
-        #title { 
-            background: rgba(0, 0, 0, 0.6) !important; 
-            color: #ffffff !important; 
-            padding: 10px 25px !important; /* Padding laterale leggermente ridotto per schermi piccoli */
-            border-radius: 50px !important;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            font-weight: 600 !important; 
-            font-size: 15px !important;
-            letter-spacing: 1.5px !important;
-            text-transform: uppercase;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            pointer-events: auto;
-            
-            /* REGOLE PER I PUNTINI (...) */
-            white-space: nowrap !important;    /* Mai a capo */
-            overflow: hidden !important;       /* Taglia l'eccedenza */
-            text-overflow: ellipsis !important; /* Mostra ... */
-            max-width: 85vw;                   /* Larghezza massima rispetto allo schermo */
-            display: block;                    /* Necessario per far funzionare ellipsis correttamente in alcuni contesti */
-        }
+
         #lang-toggle:hover {
             background: rgba(52, 152, 219, 0.3);
             border-color: rgba(52, 152, 219, 0.5);
@@ -698,17 +756,22 @@
             }
         }
 
-        /* MOBILE LANDSCAPE (max 768px) */
+        /* ================================================= */
+        /* RISOLUZIONE DEFINITIVA PER MOBILE (Sotto i 768px) */
+        /* ================================================= */
         @media (max-width: 768px) {
             #title-wrapper {
-                flex-direction: column;
-                gap: 6px;
-                align-items: flex-start;
+                /* SU MOBILE LO SPOSTIAMO IN ALTO! */
+                top: 70px !important;      /* Sotto al bottone lingua/mappa */
+                bottom: auto !important;   /* Annulla il posizionamento dal basso */
+                transform: translateX(-50%);
+                width: auto;
             }
             
             #title {
-                padding: 6px 12px;
-                font-size: 12px;
+                font-size: 12px !important; /* Testo più piccolo su mobile */
+                padding: 8px 20px !important;
+                max-width: 90vw;
             }
             
             #lang-toggle {
@@ -1069,10 +1132,19 @@
 
 <div id="pano"></div>
 
-<div id="title-wrapper">
-    <div id="title">VIRTUAL TOUR 360°</div>
+<div id="top-left-controls">
+    
+    <div id="info-widget">
+        <button id="info-toggle" onclick="toggleInfoTitle()" aria-label="Info e Titolo">i</button>
+        <div id="info-label">
+            <span id="info-text-content">ADIGE RIVER VIRTUAL TOUR</span>
+        </div>
+    </div>
+
+    <button id="lang-toggle" onclick="toggleLanguage()" title="Cambia lingua / Change language">
+        <span class="lang-it active">IT</span> | <span class="lang-en">EN</span>
+    </button>
 </div>
-<button id="lang-toggle" onclick="toggleLanguage()" title="Cambia lingua / Change language"><span class="lang-it active">IT</span> | <span class="lang-en">EN</span></button>
 
 <div id="map-box">
     <div class="map-header">
@@ -1208,20 +1280,53 @@ function getTranslation(key) {
   return (translations[currentLanguage] && translations[currentLanguage][key]) || translations['it'][key] || key;
 }
 
+// --- LOGICA TITOLO A COMPARSA ---
+var infoTimer = null;
+
+function toggleInfoTitle() {
+    var widget = document.getElementById('info-widget');
+    if (!widget) return;
+    
+    // Se è già aperto, lo chiudiamo. Se è chiuso, lo apriamo con timer.
+    if (widget.classList.contains('active')) {
+        closeInfoTitle();
+    } else {
+        openInfoTitle(true); // true = usa timer per auto-chiusura
+    }
+}
+
+function openInfoTitle(autoClose) {
+    var widget = document.getElementById('info-widget');
+    if (!widget) return;
+
+    // Resetta timer precedenti
+    if (infoTimer) clearTimeout(infoTimer);
+
+    widget.classList.add('active');
+
+    // Se richiesto, chiudi dopo 4 secondi per lettura più calma
+    if (autoClose) {
+        infoTimer = setTimeout(function() {
+            closeInfoTitle();
+        }, 4000); // 4000ms = 4 secondi
+    }
+}
+
+function closeInfoTitle() {
+    var widget = document.getElementById('info-widget');
+    if (widget) widget.classList.remove('active');
+}
+
 function setLanguage(lang) {
   if (!translations[lang]) return;
   currentLanguage = lang;
   localStorage.setItem('tourLanguage', lang);
   console.log('🌐 Lingua cambiata a:', lang);
   
-  // Aggiorna titolo
-  var titleEl = document.getElementById('title');
-  if (titleEl) {
-    if (lang === 'it') {
-      titleEl.innerText = 'Tour Lungo il Fiume Adige';
-    } else {
-      titleEl.innerText = 'Adige River Virtual Tour';
-    }
+  // Aggiorna titolo nel nuovo widget info
+  var titleTextEl = document.getElementById('info-text-content');
+  if (titleTextEl) {
+    titleTextEl.innerText = (lang === 'it') ? 'Tour Lungo il Fiume Adige' : 'Adige River Virtual Tour';
   }
   
   // Aggiorna bottoni
@@ -1862,6 +1967,11 @@ async function init() {
     
     // Auto-hide disattivato - non aggiungere event listener per showUI
     // La barra rimane sempre aperta di default
+    
+    // Mostra il titolo per qualche secondo dopo il caricamento iniziale
+    setTimeout(function() {
+        openInfoTitle(true);
+    }, 1000); // Aspetta 1 secondo dopo il load per "srotolare"
 }
 
 // Precarica tutte le scene in background con caricamento aggressivo delle texture
@@ -1955,6 +2065,9 @@ function switchScene(index) {
     document.querySelectorAll('.thumb-item').forEach((t, i) => t.classList.toggle('active', i === index));
     refreshSceneCaption(index);
     // Con immagini equirettangolari, il caricamento progressivo è gestito automaticamente
+    
+    // Mostra il titolo per qualche secondo quando cambia la scena
+    openInfoTitle(true);
 }
 
 function navigateScene(dir) {

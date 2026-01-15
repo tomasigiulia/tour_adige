@@ -757,60 +757,81 @@
         }
 
         /* ================================================= */
-        /* RISOLUZIONE DEFINITIVA PER MOBILE (Sotto i 768px) */
+        /* MOBILE & TABLET (Tasti Grandi per Dita)           */
         /* ================================================= */
         @media (max-width: 768px) {
-            #title-wrapper {
-                /* SU MOBILE LO SPOSTIAMO IN ALTO! */
-                top: 70px !important;      /* Sotto al bottone lingua/mappa */
-                bottom: auto !important;   /* Annulla il posizionamento dal basso */
-                transform: translateX(-50%);
-                width: auto;
+            /* --- BARRA DI CONTROLLO PIÙ ALTA --- */
+            :root { 
+                --bar-height: 130px; /* Più spazio per i tasti grandi */
+                --thumb-size: 70px;  
+                --thumb-gap: 8px; 
+            }
+
+            /* --- TASTI DELLA BARRA (Rotazione, Gyro, Frecce) --- */
+            .control-btn, #rotation-toggle, #gyro-toggle {
+                height: 50px !important;    /* Altezza comoda */
+                min-width: 50px !important; /* Larghezza comoda */
+                font-size: 24px !important; /* Icona grande */
+                padding: 0 !important;
+                margin: 0 2px;
+                background: rgba(255,255,255,0.1); /* Leggero sfondo per vederli meglio */
+                border: 1px solid rgba(255,255,255,0.2);
             }
             
-            #title {
-                font-size: 12px !important; /* Testo più piccolo su mobile */
-                padding: 8px 20px !important;
-                max-width: 90vw;
+            /* --- BOTTONE APRI/CHIUDI BARRA --- */
+            #bar-toggle { 
+                width: 50px !important; 
+                height: 50px !important; 
+                font-size: 20px !important; 
+                right: 15px; 
+                bottom: calc(var(--bar-height) + 55px) !important; 
+                background: rgba(0,0,0,0.8) !important;
+                border: 1px solid rgba(255,255,255,0.3) !important;
             }
-            
-            #lang-toggle {
-                padding: 5px 8px;
-                font-size: 10px;
-            }
-            
+
+            /* --- MAPPA --- */
             #map-box {
-                width: 200px;
+                width: 160px; /* Mappa un po' più grande per toccarla meglio */
                 height: 160px;
             }
-            
+            /* Tasto espandi mappa */
+            #map-hover-toggle {
+                width: 44px;
+                height: 44px;
+                font-size: 20px;
+            }
+            /* Tasti zoom mappa (se visibili) */
             .map-btn {
-                width: 32px;
-                height: 32px;
-                font-size: 14px;
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
             }
-            
             #layer-toggle {
-                width: 36px;
-                height: 32px;
+                width: 44px;
+                height: 40px;
             }
             
-            .thumb-item {
-                /* sizing via variables below */
+            /* --- INFO HOTSPOT --- */
+            .hotspot-info {
+                width: 44px;       /* Hotspot molto più cliccabile */
+                height: 44px;
+                margin-top: -22px; /* Ricalibra centro */
+                margin-left: -22px;
+                font-size: 22px;
             }
-            
-            :root { 
-                --bar-height: 118px;
-                --thumb-size: 64px; 
-                --thumb-gap: 6px; 
+
+            /* --- BOTTONE INFO E LINGUA (in alto a sx) --- */
+            #info-toggle {
+                width: 50px;
+                height: 50px;
+                font-size: 24px;
             }
-            #bar-toggle { width: 44px; height: 44px; font-size: 14px; right: 20px; bottom: calc(var(--bar-height) + 45px) !important; }
-            
-            .control-btn {
-                height: 36px;
-                min-width: 36px;
-                font-size: 15px;
-                padding: 0 8px;
+            #info-widget {
+                height: 50px;
+            }
+            #lang-toggle {
+                font-size: 13px;
+                padding: 8px 12px; /* Più facile da premere */
             }
             
             #scene-caption {
@@ -1813,17 +1834,46 @@ async function init() {
             geometry = new Marzipano.EquirectGeometry([{ width: 1000 }, { width: 2000 }, { width: 4000 }, { width: 8000 }]);
         }
         
-        // Limiter ottimizzato per mobile: FOV ampio per zoom percepibile
+        // --- CALCOLO ZOOM INTELLIGENTE ---
         var isMobile = window.innerWidth < 768;
-        // FOV MIN: quanto meno posso zoomare OUT (ampio range)
-        // FOV INITIAL: da dove comincio
-        // FOV MAX: quanto più posso zoomare IN (ristretto)
-        // Migliorati per mobile: FOV MIN ridotto (0.6 rad ≈ 34°) e MAX aumentato (1.9 rad ≈ 109°)
-        var fovMin = isMobile ? (0.6 * Math.PI / Math.PI) : (30 * Math.PI / 180);     // OUT massimo: 0.6 rad mobile (34°), 30° desktop
-        var fovMax = isMobile ? (1.9 * Math.PI / Math.PI) : (110 * Math.PI / 180);   // IN massimo: 1.9 rad mobile (109°), 110° desktop
-        var fovInitial = isMobile ? (45 * Math.PI / 180) : (75 * Math.PI / 180); // Start: 45° mobile, 75° desktop (ampio)
+        var isPortrait = window.innerHeight > window.innerWidth;
+
+        // Definiamo i gradi in base all'orientamento
+        var minFovDeg, maxFovDeg, initialFovDeg;
+
+        if (isMobile) {
+            if (isPortrait) {
+                // MOBILE VERTICALE (Il caso critico)
+                // Per "sentire" lo zoom in verticale, dobbiamo stringere tantissimo l'angolo
+                minFovDeg = 20;   // Zoom IN massimo (molto stretto per vedere dettagli)
+                maxFovDeg = 90;   // Zoom OUT limitato (altrimenti vedi nero sopra/sotto o distorsione estrema)
+                initialFovDeg = 65; // Partenza più ravvicinata
+            } else {
+                // MOBILE ORIZZONTALE
+                minFovDeg = 25;
+                maxFovDeg = 100;
+                initialFovDeg = 75;
+            }
+        } else {
+            // DESKTOP
+            minFovDeg = 15;   // Zoom IN potente
+            maxFovDeg = 120;  // Grandangolo
+            initialFovDeg = 85;
+        }
+
+        // Conversione in radianti
+        var fovMin = minFovDeg * Math.PI / 180;
+        var fovMax = maxFovDeg * Math.PI / 180;
+        var fovInitial = initialFovDeg * Math.PI / 180;
+
+        // Applicazione Limiter
         var limiter = Marzipano.RectilinearView.limit.traditional(4096, fovMin, fovMax);
-        var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: fovInitial }, limiter);
+
+        var view = new Marzipano.RectilinearView({ 
+            yaw: 0, 
+            pitch: 0, 
+            fov: fovInitial 
+        }, limiter);
         
         // Cache aumentata a 500MB per evitare che texture spariscano
         var scene = viewer.createScene({ 

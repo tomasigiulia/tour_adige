@@ -25,14 +25,65 @@
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: #000; overflow: hidden; height: 100vh; touch-action: manipulation; }
         /* Ottimizza touch per mobile - touch-action: manipulation permette pinch-to-zoom di Marzipano */
-        #pano { position: absolute; width: 100%; height: 100%; cursor: crosshair; touch-action: manipulation; transition: opacity 0.8s ease; }
+    #pano {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+      transition: opacity 0.8s ease;
+    }
+    #pano:active {
+      cursor: grabbing;
+    }
+
+                /* Posiziona il titolo sopra la barra delle scene */
+                #title-wrapper {
+                    position: absolute;
+                    top: auto !important;
+                    bottom: calc(var(--bar-height) + 40px);
+                    left: 50% !important;
+                    transform: translateX(-50%);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    align-items: center !important;
+                    z-index: 1001;
+                    pointer-events: none;
+                    transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, transform 0.25s ease;
+                }
+
+                #title-wrapper.collapsed {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(12px);
+                    pointer-events: none;
+                }
+
         #pano.fade-in { animation: panoFade 0.8s ease; }
         @keyframes panoFade { from { opacity: 0.45; } to { opacity: 1; } }
 
-        /* --- TITOLO --- */
+        /* --- TITOLO (Design Pillola Minimalista) --- */
         #title { 
-            background: var(--bg-glass); color: white; padding: 12px 20px;
-            border-radius: 10px; backdrop-filter: blur(10px); font-weight: bold;
+            background: rgba(0, 0, 0, 0.6) !important; 
+            color: #ffffff !important; 
+            padding: 10px 25px !important; /* Padding laterale leggermente ridotto per schermi piccoli */
+            border-radius: 50px !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            font-weight: 600 !important; 
+            font-size: 15px !important;
+            letter-spacing: 1.5px !important;
+            text-transform: uppercase;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            pointer-events: auto;
+            
+            /* REGOLE PER I PUNTINI (...) */
+            white-space: nowrap !important;    /* Mai a capo */
+            overflow: hidden !important;       /* Taglia l'eccedenza */
+            text-overflow: ellipsis !important; /* Mostra ... */
+            max-width: 85vw;                   /* Larghezza massima rispetto allo schermo */
+            display: block;                    /* Necessario per far funzionare ellipsis correttamente in alcuni contesti */
         }
         #lang-toggle:hover {
             background: rgba(52, 152, 219, 0.3);
@@ -64,9 +115,25 @@
             box-shadow: 0 0 12px rgba(52, 152, 219, 0.8);
         }
 
+        #lang-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: auto;
+            z-index: 1001;
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.14);
+            backdrop-filter: blur(10px);
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+
         /* --- MAP BOX --- */
         #map-box {
-            position: absolute; top: 80px; right: 20px; /* Abbassata per non coprire titolo */
+            position: absolute; top: 20px; right: 20px; /* Alzata per liberare centro */
             width: 320px; height: 260px; 
             min-width: 280px; min-height: 220px; /* Evita sovrapposizione tasti */
             z-index: 1001;
@@ -100,7 +167,7 @@
         }
         /* hover toggle (mostra solo al passaggio del mouse) */
         .hover-toggle {
-            position: absolute; bottom: 8px; right: 8px; z-index: 1004;
+            position: absolute; bottom: 15px; right: 8px; z-index: 1004;
             width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);
             background: rgba(0,0,0,0.45); color: #fff; display: flex; align-items: center; justify-content: center;
             opacity: 1; pointer-events: auto; transition: opacity 0.1s ease, transform 0.1s ease;
@@ -116,8 +183,43 @@
             height: 36px; display: flex; align-items: center; justify-content: space-between;
             padding: 6px 10px; gap: 8px; z-index: 1003; backdrop-filter: blur(6px);
         }
-        .map-title { color: #ddd; font-size: 13px; font-weight: 600; display:flex; align-items:center; gap:8px }
-        .map-layer-name { color: #bbb; font-size: 12px; font-weight: 500; opacity: 0.9; margin-left: 4px; }
+        /* Stile testi testata mappa (Grassetto e Leggibile) */
+        .map-title { 
+            color: #ffffff !important; 
+            font-size: 13px !important; 
+            font-weight: 800 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+        }
+        .map-layer-name { 
+            color: #ffffff !important; 
+            font-size: 11px !important; 
+            font-weight: 700 !important;
+            background: rgba(52, 152, 219, 0.6) !important;
+            padding: 2px 8px !important;
+            border-radius: 4px !important;
+            opacity: 1 !important;
+            margin-left: 4px !important;
+        }
+        #map-coordinates {
+            display: inline-block;
+            font-size: 11px !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            margin-left: 10px !important;
+            text-shadow: 1px 1px 3px rgba(0,0,0,1);
+            font-family: monospace !important;
+            background: none !important;
+            backdrop-filter: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            position: static !important;
+            pointer-events: none;
+        }
         /* layer menu */
         .layer-menu {
             position: absolute; top: 44px; right: 10px; z-index: 1005;
@@ -206,34 +308,59 @@
         /* --- CONTROL BAR (BARRA A DUE LIVELLI) --- */
         #control-bar {
             position: absolute;
-            bottom: 0;
+            bottom: 20px;
             left: 50%;
-            transform: translateX(-50%);
-            width: min(96vw, calc(var(--thumb-count) * (var(--thumb-size) + var(--thumb-gap)) + 260px));
-            max-width: 1200px;
-            height: var(--bar-height);
-            background: rgba(0, 0, 0, 0.72);
-            backdrop-filter: blur(14px);
-            border-top: 1px solid rgba(255,255,255,0.15);
+            transform: translateX(-50%) translateY(0);
+            width: min(94vw, calc(var(--thumb-count) * (var(--thumb-size) + var(--thumb-gap)) + 260px));
+            max-width: 1000px;
+            height: auto;
+            min-height: var(--bar-height);
+            background: rgba(15, 15, 15, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             z-index: 1001;
             display: flex;
             flex-direction: column;
-            overflow: visible; /* Permette di vedere il toggle button fuori dal bordo */
-            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            overflow: visible;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, bottom 0.3s ease;
             opacity: 1;
         }
         
         #control-bar.collapsed {
-            width: 0; /* Completamente nascosta */
+            transform: translateX(-50%) translateY(100%);
             opacity: 0;
-            transform: translateX(-50%);
             pointer-events: none;
         }
+        
+        #bar-toggle {
+            transition: all 0.3s ease;
+        }
+        
+        #bar-toggle.collapsed {
+            bottom: 60px;
+        }
+
         
         #control-bar.collapsed #control-bar-top,
         #control-bar.collapsed #control-bar-bottom {
             opacity: 0;
             pointer-events: none;
+        }
+        
+        /* Mantieni visibile e cliccabile il bottone gallery-toggle-bar per riaprire */
+        #controls-wrapper.collapsed #gallery-toggle-bar {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            position: absolute;
+            left: 0;
+            top: 12px;
+            z-index: 1005;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
         }
         
         #control-bar.collapsed::after {
@@ -249,56 +376,76 @@
             pointer-events: none;
         }
 
-        /* --- TOGGLE BUTTON (espansione orizzontale) - simile a mappa collapsed --- */
+        /* --- TOGGLE BUTTON (espansione orizzontale) - posizionato a destra del titolo --- */
         #bar-toggle {
             position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(180deg, #2a2a2a, #0f0f0f);
-            border: 1px solid rgba(255,255,255,0.08);
-            box-shadow: 0 10px 24px rgba(0,0,0,0.55);
-            color: #fff;
-            font-size: 18px;
+            right: 20px;
+            bottom: calc(var(--bar-height) + 45px);
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0, 0, 0, 0.5);
+            color: #f2f2f2;
+            font-size: 16px;
             cursor: pointer;
-            display: none; /* JavaScript lo mostrerà quando barra collapsed */
+            display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1003;
+            z-index: 1002;
             transition: all 0.3s ease;
-            pointer-events: auto;
+            backdrop-filter: blur(10px);
+            transform: none;
+            left: auto;
         }
         
         #bar-toggle:hover {
-            background: linear-gradient(180deg, rgba(52, 152, 219, 0.9), rgba(30, 100, 180, 0.9));
-            transform: translateX(-50%) scale(1.05);
+            background: rgba(0, 0, 0, 0.7);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
         }
         
-        #bar-toggle.visible {
-            display: flex;
+        #bar-toggle.collapsed {
+            bottom: calc(var(--bar-height) + 45px);
+            right: 20px;
         }
 
-        /* --- TOP ROW (44px) --- */
+        /* --- TOP ROW --- */
         #control-bar-top {
-            height: 44px;
             display: flex;
+            flex-wrap: nowrap !important; /* FORZA UNA SOLA RIGA: Impedisce di andare a capo */
             align-items: center;
             justify-content: space-between;
-            padding: 0 12px;
-            gap: 8px;
+            min-height: 50px;
+            padding: 6px 15px;
+            padding-right: 60px; /* Spazio per bar-toggle a destra */
+            gap: 10px;
             border-bottom: 1px solid rgba(255,255,255,0.04);
+            overflow: hidden; /* Assicura che nulla esca dal contenitore */
         }
 
-        #control-bar-top .control-group:first-of-type { flex: 1; }
-        #control-bar-top .control-group:last-of-type { flex: 1; justify-content: flex-end; }
+        /* I gruppi laterali non occupano spazio extra, così la didascalia può allargarsi */
+        #control-bar-top .control-group:first-of-type,
+        #control-bar-top .control-group:last-of-type {
+            flex: 0 0 auto;
+        }
+        #control-bar-top .control-group:last-of-type { justify-content: flex-end; }
 
+        /* Impedisci ai bottoni di comprimersi quando lo spazio è poco */
+        #control-bar-top .control-group:last-of-type {
+            flex-wrap: nowrap;
+            row-gap: 6px;
+        }
+        #control-bar-top .control-group .control-btn {
+            flex: 0 0 auto;
+        }
+
+        /* Impedisci ai gruppi di bottoni di schiacciarsi */
         .control-group {
             display: flex;
             gap: 8px;
             align-items: center;
+            flex-shrink: 0 !important; /* IMPORTANTE: I bottoni non devono mai restringersi */
         }
 
         /* --- BOTTOM ROW (118px) --- */
@@ -311,16 +458,28 @@
             padding: 8px 12px 8px;
             gap: 6px;
         }
+        /* Gestione testo centrale con i puntini (...) */
         #scene-caption {
-            color: #fff;
-            font-size: 13px;
-            font-weight: 700;
+            color: #ffffff !important;
+            font-size: 13px !important; /* Leggermente più grande per leggibilità */
+            font-weight: 500 !important;
             text-align: center;
-            line-height: 1.35;
-            padding: 0 16px;
-            max-width: 100%;
-            white-space: normal;
-            flex: 1;
+            padding: 0 8px !important;
+            
+            /* REGOLE PER I PUNTINI (...) */
+            white-space: nowrap !important;  /* Testo su una sola riga */
+            overflow: hidden !important;     /* Nascondi l'eccedenza */
+            text-overflow: ellipsis !important; /* Aggiungi i tre puntini */
+            
+            flex: 1; /* Occupa tutto lo spazio disponibile tra i due gruppi di bottoni */
+            min-width: 0; /* TRUCCO FLEXBOX: Permette al contenitore di rimpicciolirsi sotto la larghezza del testo */
+            
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin: 0;
+            background: transparent;
+            border: none;
+            box-shadow: none;
         }
         .thumb-row {
             width: 100%;
@@ -364,8 +523,25 @@
             pointer-events: none;
         }
         .thumb-item img { width: 100%; height: 100%; object-fit: cover; object-position: center 40%; }
-        .thumb-item.active { border-color: var(--accent); box-shadow: 0 0 15px var(--accent); }
-        .thumb-item:hover { transform: scale(1.08); border-color: rgba(52, 152, 219, 0.7); }
+        /* Stile base miniatura attiva: bordo bianco + pulsazione */
+        .thumb-item.active {
+            border-color: #ffffff !important;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+            transform: scale(1.05);
+            animation: thumb-pulse 2s infinite;
+            z-index: 10;
+        }
+        /* Animazione di pulsazione (simile all'hotspot) */
+        @keyframes thumb-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+        /* Effetto hover migliorato */
+        .thumb-item:hover {
+            transform: scale(1.08);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
 
         /* --- CONTROL BUTTONS --- */
         .control-btn {
@@ -405,6 +581,47 @@
         }
         #rotation-toggle:hover { color: #67b6ff; background: rgba(255,255,255,0.06); transform: translateY(-1px); }
         #rotation-toggle.locked { color: #e67e22; }
+        
+        #gyro-toggle {
+            border: none;
+            background: transparent;
+            color: #f2f2f2;
+            font-size: 18px;
+            padding: 0 10px;
+            min-width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            transition: color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+            cursor: pointer;
+            display: none; /* Nascosto di default - appare solo su mobile */
+        }
+        #gyro-toggle:hover { color: #3498db; background: rgba(52,152,219,0.1); transform: translateY(-1px); }
+        #gyro-toggle.active { color: #3498db; background: rgba(52,152,219,0.25); }
+
+        /* --- Gestione Visibilità Intelligente per Device --- */
+        /* Giroscopio: visibile SOLO su mobile/touch */
+        body.touch #gyro-toggle,
+        body.mobile #gyro-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Full Screen: visibile SOLO su desktop */
+        #fullscreen-toggle {
+            display: inline-flex;
+        }
+        body.touch #fullscreen-toggle,
+        body.mobile #fullscreen-toggle {
+            display: none !important;
+        }
+
+        /* Tasti più grandi su mobile per facilità di tocco */
+        body.mobile .control-btn {
+            min-width: 48px;
+            height: 48px;
+            font-size: 20px;
+        }
 
         /* --- GALLERY CONTROLS --- */
         #controls-wrapper {
@@ -524,7 +741,7 @@
                 --thumb-size: 64px; 
                 --thumb-gap: 6px; 
             }
-            #bar-toggle { width: 30px; height: 70px; font-size: 14px; right: -30px; }
+            #bar-toggle { width: 44px; height: 44px; font-size: 14px; right: 20px; bottom: calc(var(--bar-height) + 45px) !important; }
             
             .control-btn {
                 height: 36px;
@@ -547,7 +764,7 @@
                 --thumb-size: 58px; 
                 --thumb-gap: 6px; 
             }
-            #bar-toggle { width: 28px; height: 60px; font-size: 12px; right: -28px; }
+            #bar-toggle { width: 44px; height: 44px; font-size: 14px; right: 20px; bottom: calc(var(--bar-height) + 45px) !important; }
             #scene-caption { font-size: 10px; padding: 0 10px; }
             .control-btn { font-size: 12px; padding: 0 8px; }
         }
@@ -555,23 +772,29 @@
         /* MOBILE PORTRAIT (max 480px) */
         @media (max-width: 480px) {
             #title-wrapper {
-                top: 8px;
-                left: 8px;
-                right: 8px;
+                position: fixed;
+                bottom: calc(var(--bar-height) + 120px);
+                left: 50%;
+                transform: translateX(-50%);
+                top: auto;
+                right: auto;
                 flex-direction: row;
-                justify-content: space-between;
+                justify-content: center;
                 align-items: center;
                 gap: 8px;
+                max-width: 90vw;
+                z-index: 1001;
             }
             
             #title {
                 padding: 6px 10px;
                 font-size: 11px;
-                flex: 1;
                 min-width: 0;
-                white-space: nowrap;
+                white-space: normal;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                max-width: 100%;
+                text-align: center;
             }
             
             #lang-toggle {
@@ -582,7 +805,7 @@
             
             /* Mappa: ottimizzata per mobile - più piccola e meno invasiva */
             #map-box {
-                top: 110px;
+                top: 150px;
                 right: 10px;
                 width: 140px;
                 height: 140px;
@@ -675,7 +898,7 @@
                 --thumb-size: 56px; 
                 --thumb-gap: 6px; 
             }
-            #bar-toggle { width: 26px; height: 56px; font-size: 11px; right: -26px; }
+            #bar-toggle { width: 44px; height: 44px; font-size: 11px; right: 20px; bottom: calc(var(--bar-height) + 45px) !important; }
             
             #control-bar-top {
                 height: 36px;
@@ -753,10 +976,11 @@
                 --thumb-gap: 4px; 
             }
             #bar-toggle {
-                width: 24px;
-                height: 50px;
+                width: 44px;
+                height: 44px;
                 font-size: 10px;
-                right: -24px;
+                right: 20px;
+                bottom: calc(var(--bar-height) + 45px) !important;
             }
             
             #control-bar-bottom {
@@ -806,10 +1030,11 @@
             }
             
             #bar-toggle {
-                width: 22px;
+                width: 44px;
                 height: 44px;
                 font-size: 9px;
-                right: -22px;
+                right: 20px;
+                bottom: calc(var(--bar-height) + 45px) !important;
             }
             
             #control-bar-top {
@@ -844,16 +1069,17 @@
 
 <div id="pano"></div>
 
-<div id="title-wrapper" style="position: absolute; top: env(safe-area-inset-top, 20px); left: 20px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
-  <div id="title" style="background: var(--bg-glass); color: white; padding: 12px 20px; border-radius: 10px; backdrop-filter: blur(10px); font-weight: bold;">VIRTUAL TOUR 360°</div>
-  <button id="lang-toggle" style="background: var(--bg-glass); color: white; padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); font-size: 11px; cursor: pointer; transition: all 0.2s ease; z-index: 1001;" onclick="toggleLanguage()" title="Cambia lingua / Change language"><span class="lang-it active">IT</span> | <span class="lang-en">EN</span></button>
+<div id="title-wrapper">
+    <div id="title">VIRTUAL TOUR 360°</div>
 </div>
+<button id="lang-toggle" onclick="toggleLanguage()" title="Cambia lingua / Change language"><span class="lang-it active">IT</span> | <span class="lang-en">EN</span></button>
 
 <div id="map-box">
     <div class="map-header">
         <div style="display:flex;align-items:center;gap:6px">
             <div class="map-title" id="map-title-text">Mappa</div>
             <div class="map-layer-name" id="map-layer-name" style="font-size: 10px; opacity: 0.8;">OSM</div>
+            <div id="map-coordinates" style="font-size: 10px; color: #bbb; margin-left: 10px; font-family: inherit;"></div>
         </div>
         <!-- header controls left intentionally minimal; layer button moved into map controls -->
     </div>
@@ -874,8 +1100,7 @@
         </button>
         <button class="map-btn" id="center-map-btn" onclick="centerMapOnMarkers()" title="Centra mappa" aria-label="Centra mappa">⌖</button>
     </div>
-    <div id="map-coordinates" style="position: absolute; top: 8px; right: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-family: monospace; z-index: 1004; pointer-events: none;"></div>
-    <button id="map-hover-toggle" class="hover-toggle" onclick="toggleMap()" title="Espandi/Comprimi mappa" aria-label="Espandi/Comprimi mappa">📍</button>
+    <button id="map-hover-toggle" class="hover-toggle" onclick="toggleMap()" title="Espandi/Comprimi mappa" aria-label="Espandi/Comprimi mappa">⇳</button>
 </div>
 
 <div id="controls-wrapper">
@@ -920,7 +1145,8 @@ var translations = {
     changeLayer: "Cambia strato",
     centerMap: "Centra mappa",
     closeModal: "Chiudi",
-    loading: "Caricamento tour in corso..."
+    loading: "Caricamento tour in corso...",
+    gyroMode: "Modalità Visore (Giroscopio)"
   },
   en: {
     title: "VIRTUAL TOUR ALONG THE ADIGE RIVER",
@@ -941,7 +1167,8 @@ var translations = {
     changeLayer: "Change layer",
     centerMap: "Center map",
     closeModal: "Close",
-    loading: "Loading tour..."
+    loading: "Loading tour...",
+    gyroMode: "VR Mode (Gyroscope)"
   }
 };
 var currentLanguage = localStorage.getItem('tourLanguage') || 'it';
@@ -989,13 +1216,25 @@ function setLanguage(lang) {
   
   // Aggiorna titolo
   var titleEl = document.getElementById('title');
-  if (titleEl) titleEl.innerText = getTranslation('title');
+  if (titleEl) {
+    if (lang === 'it') {
+      titleEl.innerText = 'Tour Lungo il Fiume Adige';
+    } else {
+      titleEl.innerText = 'Adige River Virtual Tour';
+    }
+  }
   
   // Aggiorna bottoni
   var rotBtn = document.getElementById('rotation-toggle');
   if (rotBtn) {
     rotBtn.title = getTranslation('rotationToggle');
     rotBtn.setAttribute('aria-label', getTranslation('rotationToggle'));
+  }
+  
+  var gyroBtn = document.getElementById('gyro-toggle');
+  if (gyroBtn) {
+    gyroBtn.title = getTranslation('gyroMode');
+    gyroBtn.setAttribute('aria-label', getTranslation('gyroMode'));
   }
   
   var fullscreenBtn = document.getElementById('fullscreen-toggle');
@@ -1107,7 +1346,9 @@ const folder = baseURL + 'panorami/';
 var viewer = new Marzipano.Viewer(document.getElementById('pano'), {
     controls: {
         mouseViewMode: 'drag',
-        scrollZoom: true
+        scrollZoom: true,
+        touchViewMode: 'drag',
+        touchView: true
     }
 });
 var scenes = [];
@@ -1119,40 +1360,157 @@ var baseLayer, satelliteLayer, cartoLayer, layers = [], currentLayerIndex = 0;
 var rotationLocked = false;
 var rotationTimer = null; // timer per riabilitare la rotazione dopo X ms
 var rotationLockMode = null; // null | 'manual' | 'temporary'
-var uiTimeout; // timer per auto-hide UI
-var manualToggle = false; // flag per disabilitare auto-hide dopo toggle manuale
+var gyroEnabled = false; // Stato della modalità giroscopio
+var isDeviceMobile = false; // Rilevamento device
 
-// Auto-hide UI dopo inattività
-function showUI() {
-    // Se l'utente ha aperto/chiuso manualmente, non fare auto-hide
-    if (manualToggle) return;
+// === RILEVAMENTO DEVICE TYPE ===
+function detectDeviceType() {
+    var ua = navigator.userAgent;
+    var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    var isTablet = /iPad|Android(?!.*Mobile)/i.test(ua);
+    var hasTouch = () => {
+        try { return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0)); }
+        catch(e) { return false; }
+    };
     
-    var controlBar = document.getElementById('control-bar');
-    var titleWrapper = document.getElementById('title-wrapper');
-    if (controlBar) controlBar.classList.remove('collapsed');
-    if (titleWrapper) titleWrapper.style.opacity = '1';
-    clearTimeout(uiTimeout);
-    uiTimeout = setTimeout(hideUI, 5000); // Nasconde dopo 5 secondi di inattività
+    isDeviceMobile = isMobile || hasTouch();
+    
+    // Aggiungi classe al body per gestire CSS intelligente
+    var classList = document.body.classList;
+    if (hasTouch()) classList.add('touch');
+    if (isMobile || isTablet) classList.add('mobile');
+    
+    console.log('📱 Device Type Detected:', { isMobile, isTablet, hasTouch: hasTouch(), isDeviceMobile });
+}
+
+// Richiama il rilevamento non appena il DOM è carico
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', detectDeviceType);
+} else {
+    detectDeviceType();
+}
+
+// AUTO-HIDE DISATTIVATO: La UI rimane sempre visibile
+function showUI() {
+    // Auto-hide disabilitato - la barra rimane sempre aperta di default
+    // Non fare nulla
 }
 
 function hideUI() {
-    // Se l'utente ha gestito manualmente, non fare auto-hide
-    if (manualToggle) return;
+    // Auto-hide disabilitato - la barra rimane sempre aperta di default
+    // Non fare nulla
+}
+
+function toggleGyro() {
+    var btn = document.getElementById('gyro-toggle');
+    if (!btn) return;
     
-    // Chiude solo se non siamo già chiusi e se non c'è un modale aperto
-    var infoModal = document.getElementById('info-modal');
-    if (infoModal && infoModal.style.display === 'block') return;
+    // Verifica se il dispositivo supporta giroscopio
+    if (typeof DeviceOrientationEvent === 'undefined') {
+        console.warn('⚠️ Giroscopio non disponibile su questo dispositivo');
+        alert('Questo dispositivo non supporta il giroscopio.');
+        return;
+    }
     
-    var controlBar = document.getElementById('control-bar');
-    var barToggle = document.getElementById('bar-toggle');
+    // Gestione permessi iOS 13+
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // iOS 13+: richiedi permesso esplicito
+        DeviceOrientationEvent.requestPermission()
+            .then(permissionState => {
+                if (permissionState === 'granted') {
+                    activateGyroLogic(btn);
+                } else {
+                    console.warn('⚠️ Permesso giroscopio negato dall\'utente');
+                    alert('Permesso giroscopio negato. Abilita in Impostazioni > Privacy > Movimento e orientamento.');
+                }
+            })
+            .catch(err => {
+                console.warn('❌ Errore richiesta permesso giroscopio:', err);
+            });
+    } else {
+        // Android e altri browser: attiva direttamente
+        activateGyroLogic(btn);
+    }
+}
+
+function activateGyroLogic(btn) {
+    gyroEnabled = !gyroEnabled;
     
-    // Usa solo le classi, non toccare .style.opacity manualmente
-    if (controlBar && !controlBar.classList.contains('collapsed')) {
-        controlBar.classList.add('collapsed');
-        if (barToggle) {
-            barToggle.classList.add('collapsed');
-            barToggle.textContent = '⏴'; // Espandi verso sinistra
+    if (gyroEnabled) {
+        console.log('📱 Modalità Giroscopio attivata');
+        
+        // Disabilita rotazione automatica
+        stopAutoRotation();
+        
+        // Tenta di disabilitare controlli classici per evitare conflitti
+        try {
+            if (viewer && viewer.controls && typeof viewer.controls === 'function') {
+                var controls = viewer.controls();
+                if (controls) {
+                    // Prova a disabilitare i metodi di controllo standard
+                    if (typeof controls.disableMethod === 'function') {
+                        controls.disableMethod('mouseViewDrag');
+                        controls.disableMethod('touchView');
+                    }
+                }
+            }
+        } catch(e) { console.log('Disabilitazione controlli classici (non critico):', e); }
+        
+        // Attiva listener per orientamento dispositivo
+        window.addEventListener('deviceorientation', handleDeviceOrientation, { passive: true });
+        
+        // Feedback visivo: cambio colore e icona
+        btn.style.color = '#3498db';
+        btn.innerHTML = '🕶️';
+        btn.classList.add('active');
+        btn.title = getTranslation('gyroMode') + ' (ATTIVO)';
+        
+        // Opzionale: nascondi UI per immersione VR
+        // var controlBar = document.getElementById('control-bar');
+        // if (controlBar) controlBar.classList.add('collapsed');
+        
+    } else {
+        console.log('📱 Modalità Giroscopio disattivata');
+        window.removeEventListener('deviceorientation', handleDeviceOrientation);
+        
+        // Ri-abilita controlli classici
+        try {
+            if (viewer && viewer.controls && typeof viewer.controls === 'function') {
+                var controls = viewer.controls();
+                if (controls && typeof controls.enableMethod === 'function') {
+                    controls.enableMethod('mouseViewDrag');
+                    controls.enableMethod('touchView');
+                }
+            }
+        } catch(e) { console.log('Riabilitazione controlli classici (non critico):', e); }
+        
+        // Feedback visivo: ritorna a normale
+        btn.style.color = 'white';
+        btn.innerHTML = '📱';
+        btn.classList.remove('active');
+        btn.title = getTranslation('gyroMode');
+    }
+}
+
+function handleDeviceOrientation(event) {
+    if (!gyroEnabled || !viewer || !currentView) return;
+    
+    try {
+        var alpha = (event.alpha || 0) * Math.PI / 180; // Z: rotazione sinistra-destra (compass)
+        var beta = (event.beta || 0) * Math.PI / 180;   // X: avanti-indietro (tilt)
+        var gamma = (event.gamma || 0) * Math.PI / 180; // Y: rotazione left-right (roll)
+        
+        // Usa alpha (compass) come yaw principale
+        // Usa beta (tilt) come pitch
+        var yaw = -alpha;
+        var pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, -beta));
+        
+        // Aggiorna la vista del panorama in tempo reale
+        if (typeof currentView.setParameters === 'function') {
+            currentView.setParameters({ yaw: yaw, pitch: pitch }, { transitionDuration: 0 });
         }
+    } catch(e) { 
+        console.warn('Errore in handleDeviceOrientation (non critico):', e);
     }
 }
 
@@ -1355,8 +1713,9 @@ async function init() {
         // FOV MIN: quanto meno posso zoomare OUT (ampio range)
         // FOV INITIAL: da dove comincio
         // FOV MAX: quanto più posso zoomare IN (ristretto)
-        var fovMin = isMobile ? (20 * Math.PI / 180) : (30 * Math.PI / 180);     // OUT massimo: 20° mobile, 30° desktop
-        var fovMax = isMobile ? (110 * Math.PI / 180) : (110 * Math.PI / 180);   // IN massimo: 110° (circa)
+        // Migliorati per mobile: FOV MIN ridotto (0.6 rad ≈ 34°) e MAX aumentato (1.9 rad ≈ 109°)
+        var fovMin = isMobile ? (0.6 * Math.PI / Math.PI) : (30 * Math.PI / 180);     // OUT massimo: 0.6 rad mobile (34°), 30° desktop
+        var fovMax = isMobile ? (1.9 * Math.PI / Math.PI) : (110 * Math.PI / 180);   // IN massimo: 1.9 rad mobile (109°), 110° desktop
         var fovInitial = isMobile ? (45 * Math.PI / 180) : (75 * Math.PI / 180); // Start: 45° mobile, 75° desktop (ampio)
         var limiter = Marzipano.RectilinearView.limit.traditional(4096, fovMin, fovMax);
         var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: fovInitial }, limiter);
@@ -1497,19 +1856,12 @@ async function init() {
                 // Aggiorna la dimensione interna di Leaflet per evitare bug grafici
                 setTimeout(function() { if (map) map.invalidateSize(); }, 300);
             }
-            // Mostra UI quando l'utente interagisce
-            showUI();
+            // UI sempre visibile - auto-hide disattivato
         });
     }
     
-    // Attiva il controllo UI sui tocchi/click - ma SOLO dal panorama per non bloccare Marzipano
-    document.addEventListener('touchstart', function(e) {
-        if (!e.target.closest('#pano')) return; // Solo se il tocco è sul panorama
-        showUI();
-    }, { passive: true });
-    document.addEventListener('mousedown', showUI);
-    // Avvia il timer iniziale per nascondere UI dopo 5 secondi
-    showUI();
+    // Auto-hide disattivato - non aggiungere event listener per showUI
+    // La barra rimane sempre aperta di default
 }
 
 // Precarica tutte le scene in background con caricamento aggressivo delle texture
@@ -1547,6 +1899,8 @@ function switchScene(index) {
     var mapBox = document.getElementById('map-box');
     if (mapBox && mapBox.classList.contains('collapsed')) {
         mapBox.classList.remove('collapsed');
+        var coords = document.getElementById('map-coordinates');
+        if (coords) coords.style.display = 'block'; // Mostra coordinate quando apri mappa
         setTimeout(function() { if (map) map.invalidateSize(); }, 300);
     }
     
@@ -1626,13 +1980,29 @@ function updateMapCoordinates() {
     if (coordsEl && scenes && scenes[currentSceneIndex]) {
         var lat = scenes[currentSceneIndex].lat.toFixed(4);
         var lng = scenes[currentSceneIndex].lng.toFixed(4);
-        coordsEl.textContent = lat + ', ' + lng;
+        coordsEl.textContent = '[' + lat + ', ' + lng + ']';
     }
 }
 
 function toggleMap() {
-    document.getElementById('map-box').classList.toggle('collapsed');
-    setTimeout(() => map.invalidateSize(), 200);
+    var mapBox = document.getElementById('map-box');
+    var coords = document.getElementById('map-coordinates');
+    if (!mapBox) return;
+    mapBox.classList.toggle('collapsed');
+    // Nascondi/mostra coordinate via JavaScript
+    if (coords) {
+        if (mapBox.classList.contains('collapsed')) {
+            // Nascondi completamente il testo quando la mappa è chiusa
+            coords.style.visibility = 'hidden';
+            coords.innerHTML = '';
+        } else {
+            coords.style.visibility = 'visible';
+            updateMapCoordinates(); // Riempie i dati
+        }
+    }
+    if (typeof map !== 'undefined' && map && typeof map.invalidateSize === 'function') {
+        setTimeout(() => map.invalidateSize(), 200);
+    }
 }
 
 function toggleControls() {
@@ -1640,7 +2010,7 @@ function toggleControls() {
 }
 
 // Abilita espansione/contrazione della galleria al passaggio del mouse
-(function enableGalleryHover() {
+function enableGalleryHover() {
     var cw = document.getElementById('controls-wrapper');
     if (!cw) return;
     var enterTimer = null;
@@ -1666,7 +2036,28 @@ function toggleControls() {
         hoverBtn.addEventListener('mouseenter', function() { if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; } cw.classList.remove('collapsed'); });
         hoverBtn.addEventListener('mouseleave', function() { if (leaveTimer) clearTimeout(leaveTimer); leaveTimer = setTimeout(function(){ cw.classList.add('collapsed'); }, leaveDelay); });
     }
-})();
+    
+    // Bottone dentro la barra con click diretto
+    var toggleBarBtn = document.getElementById('gallery-toggle-bar');
+    if (toggleBarBtn) {
+        toggleBarBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            // Cancella i timeout pendenti per rimozione immediata
+            if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
+            if (enterTimer) { clearTimeout(enterTimer); enterTimer = null; }
+            console.log('✓ Gallery toggle clicked');
+            cw.classList.toggle('collapsed');
+        });
+    }
+}
+
+// Esegui quando il DOM è pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', enableGalleryHover);
+} else {
+    enableGalleryHover();
+}
 
 function zoomIn() {
     map.zoomIn();
@@ -1677,7 +2068,7 @@ function zoomOut() {
 }
 
 function toggleLayer() {
-    // cicla tra i layer disponibili
+    if (!layers || !layers.length) return;
     var next = (currentLayerIndex + 1) % layers.length;
     setLayer(next);
 }
@@ -1704,15 +2095,13 @@ function setLayer(index) {
     // aggiorna UI: icona, nome layer, attribuzione
     var btn = document.getElementById('layer-toggle');
     if (btn) {
-        // Mantieni l'icona SVG a strati (usa innerHTML con svg così rimane coerente al cambio)
         btn.innerHTML = `
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M12 3L2 8l10 5 10-5-10-5z" fill="currentColor"/>
                 <path d="M12 10l-10 5 10 5 10-5-10-5z" fill="currentColor" opacity="0.9"/>
                 <path d="M12 17l-10 5 10 5 10-5-10-5z" fill="currentColor" opacity="0.7" transform="translate(0,-8) scale(0.9)"/>
             </svg>`;
-        btn.title = 'Cambia strato';
-        // animazione di feedback
+        btn.title = getTranslation('changeLayer') || 'Cambia strato';
         btn.classList.add('pulse');
         setTimeout(() => btn.classList.remove('pulse'), 380);
     }
@@ -2013,68 +2402,60 @@ function hideInfoHotspot() {
 
 // --- TOGGLE BAR FUNCTION ---
 function toggleBar() {
-    var controlBar = document.getElementById('control-bar');
-    var barToggle = document.getElementById('bar-toggle');
-    var titleWrapper = document.getElementById('title-wrapper');
+    const bar = document.getElementById('control-bar');
+    const toggle = document.getElementById('bar-toggle');
+    const titleWrapper = document.getElementById('title-wrapper');
     
-    // 1. Disabilita completamente l'auto-hide quando l'utente usa il toggle manuale
-    manualToggle = true;
-    clearTimeout(uiTimeout);
+    // Attiviamo il flag manualToggle per fermare l'auto-hide automatico 
+    // se l'utente decide di chiudere/aprire da solo
+    manualToggle = true; 
+
+    bar.classList.toggle('collapsed');
+    if (titleWrapper) titleWrapper.classList.toggle('collapsed', bar.classList.contains('collapsed'));
     
-    // 2. Cambia lo stato
-    var isCurrentlyCollapsed = controlBar.classList.contains('collapsed');
-    
-    if (isCurrentlyCollapsed) {
-        // Sto aprendo la barra
-        controlBar.classList.remove('collapsed');
-        barToggle.classList.remove('visible'); // Nascondi bottone circolare
-        barToggle.textContent = '⤢'; // Icona espandi/comprimi (stesso simbolo)
-        barToggle.title = getTranslation('hideBar');
-        
-        // Ripristina la visibilità del titolo
-        if (titleWrapper) titleWrapper.style.opacity = '1';
-        
-        // Forza il browser a ricalcolare le miniature se erano rimaste "invisibili"
-        setTimeout(function() {
-            var track = document.getElementById('thumb-track');
-            if (track) {
-                track.scrollLeft = track.scrollLeft; // Forza il ridisegno dello scroll
-            }
-        }, 100);
+    if (bar.classList.contains('collapsed')) {
+        toggle.innerHTML = '⇯'; // Icona per riaprire (freccia su)
+        toggle.title = getTranslation('showBar');
+        // Abbassa il titolo quando la barra è chiusa
+        if (titleWrapper) titleWrapper.style.bottom = '20px';
     } else {
-        // Sto chiudendo la barra
-        controlBar.classList.add('collapsed');
-        barToggle.classList.add('visible'); // Mostra bottone circolare
-        barToggle.textContent = '⤢'; // Icona espandi/comprimi
-        barToggle.title = getTranslation('showBar');
+        toggle.innerHTML = '⇳'; // Icona per chiudere
+        toggle.title = getTranslation('hideBar');
+        // Rialza il titolo sopra la barra aperta
+        if (titleWrapper) titleWrapper.style.bottom = 'calc(var(--bar-height) + 15px)';
     }
+}
+
+// Disabilita auto-hide su mobile
+if (window.innerWidth < 768) {
+    manualToggle = true;
 }
 </script>
 
 <!-- Control Bar (Due livelli: superiore con controlli, inferiore con thumbnails) -->
-<button id="bar-toggle" title="Mostra/Nascondi barra" aria-label="Mostra o nascondi la barra di controllo" onclick="toggleBar()">⤢</button>
+<button id="bar-toggle" title="Mostra/Nascondi barra" aria-label="Mostra o nascondi la barra di controllo" onclick="toggleBar()">⇳</button>
 
 <div id="control-bar">
     <!-- TOP ROW (44px): Controlli -->
     <div id="control-bar-top">
-        <div class="control-group">
-        </div>
+        <div class="control-group"></div>
         <div id="scene-caption"></div>
         <div class="control-group">
-            <button id="compress-bar-btn" class="control-btn" onclick="toggleBar()" title="Comprimi barra" aria-label="Comprimi barra">⏵</button>
+            <button id="gyro-toggle" class="control-btn" onclick="toggleGyro()" title="Modalità Visore (Giroscopio)" aria-label="Modalità Visore (Giroscopio)">📱</button>
             <button id="rotation-toggle" class="control-btn" onclick="toggleRotation(event)" title="Blocca/Sblocca rotazione" aria-label="Blocca/Sblocca rotazione">⏸</button>
-            <button id="fullscreen-toggle" class="control-btn" aria-label="Schermo intero" title="Schermo intero" onclick="toggleFullscreen()">⛶</button>
+            <button id="fullscreen-toggle" class="control-btn" onclick="toggleFullscreen()" title="Schermo intero" aria-label="Schermo intero">⛶</button>
         </div>
     </div>
     
+    <!-- BOTTOM ROW (variabile): Miniature -->
     <div id="control-bar-bottom">
         <div class="thumb-row">
             <div class="control-group">
-                <button class="control-btn" id="prev-scene-btn" aria-label="Vista precedente" title="Vista precedente" onclick="navigateScene(-1)">❮</button>
+                <button class="control-btn" id="prev-scene-btn" onclick="navigateScene(-1)" title="Vista precedente" aria-label="Vista precedente">❮</button>
             </div>
             <div id="thumb-track"></div>
             <div class="control-group">
-                <button class="control-btn" id="next-scene-btn" aria-label="Vista successiva" title="Vista successiva" onclick="navigateScene(1)">❯</button>
+                <button class="control-btn" id="next-scene-btn" onclick="navigateScene(1)" title="Vista successiva" aria-label="Vista successiva">❯</button>
             </div>
         </div>
     </div>
